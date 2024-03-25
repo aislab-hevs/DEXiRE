@@ -1,35 +1,46 @@
 # DEXIRE
 
-<!--- These are examples. See https://shields.io for others or to customize this set of shields. You might want to include dependencies, project status and licence info here --->
+<!-- trunk-ignore(markdownlint/MD033) -->
+<p align="center">
+<img src="images/logo/logo_dexire_small.png" alt="logo_dexire" width="100"/>
+</p>
 
-DEXiRE stands for Deep Explanations and Rule extractor is an XAI tool to explain deep learning models using  `<utility/tool/feature>` that allows `<insert_target_audience>` to do `<action/task_it_does>`.
+<!--- These are examples. See https://shields.io for others or to customize this set of shields. You might want to include dependencies, project status and license info here --->
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Additional line of information text about what the project does. Your introduction should be around 2 or 3 sentences. Don't go overboard, people won't read it.
+DEXiRE stands for Deep Explanations and Rule extractor is an XAI tool to explain deep learning models extracting rule sets from their hidden layers.
+
+This project allows to explain supervised learning models (e.g., classification and regression).
 
 ## Prerequisites
 
 Before you begin, ensure you have met the following requirements:
+
 <!--- These are just example requirements. Add, duplicate or remove as required --->
-* You have installed the latest version of `<coding_language/dependency/requirement_1>`
-* You have a `<Windows/Linux/Mac>` machine. State which OS is supported/which is not.
-* You have read `<guide/link/documentation_related_to_project>`.
 
-## Installing <project_name>
+- You have installed the latest version of `<coding_language/dependency/requirement_1>`
+- You have a `<Windows/Linux/Mac>` machine. State which OS is supported/which is not.
+- You have read `<guide/link/documentation_related_to_project>`.
 
-To install <project_name>, follow these steps:
+## Installing DEXiRE
+
+To install DEXiRE, follow these steps:
 
 Linux and macOS:
+
 ```
 <install_command>
 ```
 
 Windows:
+
 ```
 <install_command>
 ```
-## Using <project_name>
 
-To use <project_name>, follow these steps:
+## Using DEXiRE
+
+To use DEXiRE, follow these steps:
 
 ```
 <usage_example>
@@ -37,9 +48,11 @@ To use <project_name>, follow these steps:
 
 Add run commands and examples you think users will find useful. Provide an options reference for bonus points!
 
-## Contributing to <project_name>
+## Contributing to DEXiRE
+
 <!--- If your README is long or you have some specific process or steps you want contributors to follow, consider creating a separate CONTRIBUTING.md file--->
-To contribute to <project_name>, follow these steps:
+
+To contribute to DEXiRE, follow these steps:
 
 1. Fork this repository.
 2. Create a branch: `git checkout -b <branch_name>`.
@@ -53,17 +66,14 @@ Alternatively see the GitHub documentation on [creating a pull request](https://
 
 Thanks to the following people who have contributed to this project:
 
-* [@scottydocs](https://github.com/scottydocs) 📖
-* [@cainwatson](https://github.com/cainwatson) 🐛
-* [@calchuchesta](https://github.com/calchuchesta) 🐛
-
-You might want to consider using something like the [All Contributors](https://github.com/all-contributors/all-contributors) specification and its [emoji key](https://allcontributors.org/docs/en/emoji-key).
+- [@victorc365](https://github.com/victorc365) 📖
 
 ## Contact
 
-If you want to contact me you can reach me at <your_email@address.com>.
+If you want to contact me you can reach me at <victorc365@gmail.com>.
 
 ## License
+
 <!--- If you're not sure which open license to use see https://choosealicense.com/--->
 
-This project uses the following license: [<license_name>](<link>).
+This project uses the following license: [MIT](https://opensource.org/license/mit).
