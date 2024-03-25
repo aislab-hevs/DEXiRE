@@ -8,18 +8,48 @@ import tensorflow as tf
 import pickle
 
 class AbstractExpr(ABC):
+    """Abstract class for representing
+    logical expressions.
 
-  @abstractmethod
-  def eval(self, value: Any)->bool:
-    pass
+    :param ABC: Abstract class definition.
+    :type ABC: ABC Abstract class.
+    """
+    @abstractmethod
+    def eval(self, value: Any)->bool:
+      """Evaluates the expression.
+
+      :param value: variable current value.
+      :type value: Any
+      :return: Logical expression evaluation. True if expression evaluates to True, False otherwise.
+      :rtype: bool
+      """
+      pass
 
 class AbstractClause(AbstractExpr):
+  """Abstract class for representing
+  logical clauses (sets of expressions).
+
+  :param AbstractExpr: Abstract class expression.
+  :type AbstractExpr: AbstractExpr class.
+  """
 
   @abstractmethod
   def eval(self, value: Any)->bool:
+    """Evaluates the clause.
+
+    :param value: variables current values.
+    :type value: Any
+    :return: Logical clause evaluation. True if clause evaluates to True, False otherwise.
+    """
     pass
 
 class AbstractRule(ABC):
+  """Abstract class for representing
+  logical rules.
+
+  :param ABC: Abstract class definition.
+  :type ABC: ABC Abstract class.
+  """
 
   @abstractmethod
   def eval(value: Any)-> Union[Any, None]:
