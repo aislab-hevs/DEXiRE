@@ -8,7 +8,7 @@ from ..core.dexire_abstract import Mode, AbstractRuleExtractor, AbstractRuleSet
 from ..core.expression import Expr
 from ..core.rule import Rule
 from ..core.rule_set import RuleSet
-from ..core.clause import ConjuntiveClause, DisjuntiveClause
+from ..core.clause import ConjunctiveClause, DisjunctiveClause
 
 class TreeRuleExtractor(AbstractRuleExtractor):
   def __init__(self,

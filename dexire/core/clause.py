@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple, Union, Callable, Set
+from typing import Any, Dict, List, Tuple, Union, Callable, Set, Iterator
 
 from.expression import Expr
 from .dexire_abstract import AbstractClause
@@ -72,17 +72,17 @@ class ConjunctiveClause(AbstractClause):
     return hash(repr(self))
 
   def __repr__(self) -> str:
-    """_summary_
+    """Returns the string representation of the conjunctive clause.
 
-    :return: _description_
+    :return: String representation of the conjunctive clause.
     :rtype: str
     """
     return self.__str__()
 
   def __str__(self) -> str:
-    """_summary_
+    """Returns the string representation of the conjunctive clause.
 
-    :return: _description_
+    :return: String representation of the conjunctive clause.
     :rtype: str
     """
     if len(self.clauses) == 0:
@@ -91,11 +91,11 @@ class ConjunctiveClause(AbstractClause):
       return "("+" AND ".join([str(c) for c in self.clauses])+")"
 
   def __eq__(self, other: object) -> bool:
-    """_summary_
+    """Compares two conjunctive clauses and return True if they are the same clause, False otherwise.
 
-    :param other: _description_
+    :param other: The other conjunctive clause to compare.
     :type other: object
-    :return: _description_
+    :return: Boolean value True if the conjunctive clauses are the same, False otherwise.
     :rtype: bool
     """
     equality = False
@@ -105,60 +105,60 @@ class ConjunctiveClause(AbstractClause):
           equality = True
     return equality
 
-  def __iter__(self):
-    """_summary_
+  def __iter__(self) -> Iterator[Union[Expr, AbstractClause]]:
+    """Iterates over the expressions in the conjunctive clause.
 
-    :yield: _description_
-    :rtype: _type_
+    :yield: expression in the conjunctive clause.
+    :rtype: Iterator[Union[Expr, AbstractClause]]
     """
     for expr in self.clauses:
       yield expr
 
 
 class DisjunctiveClause(AbstractClause):
-  """_summary_
+  """Disjunctive clause (clauses join with OR).
 
-  :param AbstractClause: _description_
-  :type AbstractClause: _type_
+  :param AbstractClause: Abstract class for clause.
+  :type AbstractClause: AbstractClause
   """
   def __init__(self, clauses: List[Union[Expr, AbstractClause]] = []) -> None:
-    """_summary_
+    """Constructor for disjunctive clause. Receives the list of clauses or expressions to join
 
-    :param clauses: _description_, defaults to []
+    :param clauses: List of clauses or expressions to join with OR, defaults to []
     :type clauses: List[Union[Expr, AbstractClause]], optional
     """
     self.clauses = clauses
 
   def get_feature_idx(self) -> List[int]:
-    """_summary_
+    """Get the feature indexes list used in this disjunctive clause.
 
-    :return: _description_
+    :return: List of feature indexes used in this disjunctive clause.
     :rtype: List[int]
     """
     return [expr.get_feature_idx() for expr in self.clauses]
 
   def get_feature_name(self) -> List[str]:
-    """_summary_
+    """Get the feature names list used in this disjunctive clause.
 
-    :return: _description_
+    :return: List of feature names used in this disjunctive clause.
     :rtype: List[str]
     """
     return [expr.get_feature_name() for expr in self.clauses]
 
   def add_clauses(self, clause: List[Expr]) -> None:
-    """_summary_
+    """Add a list of expressions to the disjunctive clause.
 
-    :param clause: _description_
+    :param clause: List of expressions to add to the disjunctive clause
     :type clause: List[Expr]
     """
     self.clauses += clause
 
   def eval(self, value: List[Any]) -> bool:
-    """_summary_
+    """Evaluates the disjunctive clause given variable values, returning True if any clause is True,
 
-    :param value: _description_
+    :param value: List of values to evaluate the expression.
     :type value: List[Any]
-    :return: _description_
+    :return: True if any clause is True, False otherwise.
     :rtype: bool
     """
     value_list = []
@@ -167,25 +167,25 @@ class DisjunctiveClause(AbstractClause):
     return any(value_list)
 
   def __len__(self) -> int:
-    """_summary_
+    """returns the number of features used in this disjunctive clause.
 
-    :return: _description_
+    :return: length of the disjunctive clause.
     :rtype: int
     """
     return len(self.clauses)
 
   def __repr__(self) -> str:
-    """_summary_
+    """Returns the string representation of the disjunctive clause.
 
-    :return: _description_
+    :return: String representation of the disjunctive clause.
     :rtype: str
     """
     return self.__str__()
 
   def __str__(self) -> str:
-    """_summary_
+    """Returns string representation of the disjunctive clause.
 
-    :return: _description_
+    :return: String representation of the disjunctive clause.
     :rtype: str
     """
     if len(self.clauses) == 0:
@@ -194,11 +194,11 @@ class DisjunctiveClause(AbstractClause):
       return "["+" OR ".join([str(c) for c in self.clauses])+"]"
 
   def __eq__(self, other: object) -> bool:
-    """_summary_
+    """Compares two disjunctive clauses and return True if they are the same clause, False otherwise
 
-    :param other: _description_
+    :param other: Other disjunctive clause to compare.
     :type other: object
-    :return: _description_
+    :return: True if the disjunctive clauses are the same, False otherwise.
     :rtype: bool
     """
     equality = False
@@ -209,18 +209,18 @@ class DisjunctiveClause(AbstractClause):
     return equality
 
   def __hash__(self) -> int:
-    """_summary_
+    """Returns the hash of the disjunctive clause.
 
-    :return: _description_
+    :return: hashed disjunctive clause.
     :rtype: int
     """
     return hash(repr(self))
 
-  def __iter__(self):
-    """_summary_
+  def __iter__(self) -> Iterator[Union[Expr, AbstractClause]]:
+    """Iterates over the expressions in the disjunctive clause.
 
-    :yield: _description_
-    :rtype: _type_
+    :yield: expression in the disjunctive clause.
+    :rtype: Iterator[Union[Expr, AbstractClause]]
     """
     for expr in self.clauses:
       yield expr
