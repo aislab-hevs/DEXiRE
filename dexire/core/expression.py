@@ -3,12 +3,29 @@ from typing import Any, Dict, List, Tuple, Union, Callable, Set
 from .dexire_abstract import AbstractExpr, Operators
 
 class Expr(AbstractExpr):
+  """Expression class definition for hold logical expressions.
+
+  :param AbstractExpr: Abstract class for expression.
+  :type AbstractExpr: AbstractExpr.
+  """
   def __init__(self,
                feature_idx: int,
                threshold: Any,
                operator: Union[str, Callable],
                feature_name: str = ""
                ) -> None:
+    """_summary_
+
+    :param feature_idx: _description_
+    :type feature_idx: int
+    :param threshold: _description_
+    :type threshold: Any
+    :param operator: _description_
+    :type operator: Union[str, Callable]
+    :param feature_name: _description_, defaults to ""
+    :type feature_name: str, optional
+    """
+    super(Expr, self).__init__()
     self.feature_idx = feature_idx
     self.threshold = threshold
     self.operator = operator
@@ -18,10 +35,18 @@ class Expr(AbstractExpr):
     self.vec_eval = None
 
   def __generate_sympy_expr(self):
-    # to do it generate the expresion
+    #TODO: generate the logic expression with sympy.
     pass
 
   def eval(self, value: Any) -> bool:
+    """Evaluates the logical expression, returning true or false according to condition.
+
+    :param value: Value for variable to evaluate. 
+    :type value: Any
+    :raises Exception: Operator not recognized. If the operator in expression is not recognized, an exception will be raised.
+    :return: Boolean value given the value in the expression.
+    :rtype: bool
+    """
     if isinstance(self.operator, Callable):
       return self.operator(value, self.threshold)
     elif self.operator == Operators.GREATER_THAN:
@@ -39,19 +64,44 @@ class Expr(AbstractExpr):
     else:
       raise Exception("Operator not recognized")
 
-  def get_feature_idx(self):
+  def get_feature_idx(self) -> int:
+    """Returns the feature index used in this logical expression.
+
+    :return: numerical index of the feature used in this logical expression.
+    :rtype: int
+    """
     return self.feature_idx
 
-  def get_feature_name(self):
+  def get_feature_name(self) -> str:
+    """Returns the feature name used in this logical expression.
+
+    :return: name of the feature used in this logical expression.
+    :rtype: str
+    """
     return self.feature_name
 
-  def __len__(self):
+  def __len__(self) -> int:
+    """Returns the number of features used in this logical expression.
+
+    :return: numbers of the features (atomic terms) used in this logical expression.
+    :rtype: int
+    """
     return 1
 
   def __repr__(self) -> str:
-     return self.__str__()
+    """Returns the representation of the logical expression.
+
+    :return: String representation of the logical expression.
+    :rtype: str
+    """
+    return self.__str__()
 
   def __str__(self) -> str:
+    """Returns the string representation of the logical expression.
+
+    :return: String representation of the logical expression.
+    :rtype: str
+    """
     if self.feature_name is not None and len(self.feature_name) > 0:
       pass
     else:
@@ -61,6 +111,13 @@ class Expr(AbstractExpr):
                                     threshold=self.threshold)
 
   def __eq__(self, other: object) -> bool:
+    """Compares two logical expressions and return True if they are the same expression, False otherwise.
+
+    :param other: Other logical expression to compare.
+    :type other: object
+    :return: Boolean value True if the logical expressions are the same, False otherwise.
+    :rtype: bool
+    """
     equality = False
     if isinstance(other, self.__class__):
       if self.feature_idx == other.feature_idx \
@@ -70,4 +127,9 @@ class Expr(AbstractExpr):
     return equality
 
   def __hash__(self) -> int:
+    """Returns the hash of the logical expression.
+
+    :return: Hash of the logical expression.
+    :rtype: int
+    """
     return hash(repr(self))

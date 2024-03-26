@@ -4,6 +4,11 @@ from.expression import Expr
 from .dexire_abstract import AbstractClause
 
 class ConjuntiveClause(AbstractClause):
+  """_summary_
+
+  :param AbstractClause: _description_
+  :type AbstractClause: _type_
+  """
   def __init__(self, clausses: List[Union[Expr, AbstractClause]] = []) -> None:
     self.clausses = clausses
 

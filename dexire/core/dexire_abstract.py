@@ -1,11 +1,6 @@
-from typing import Any, Dict, List, Tuple, Union, Callable, Set
+from typing import Any, List, Union, Set
 from enum import Enum
-from abc import ABC, abstractclassmethod, abstractmethod
-import numpy as np
-import sympy as sp
-import pandas as pd
-import tensorflow as tf
-import pickle
+from abc import ABC, abstractmethod
 
 class AbstractExpr(ABC):
     """Abstract class for representing
@@ -53,18 +48,49 @@ class AbstractRule(ABC):
 
   @abstractmethod
   def eval(value: Any)-> Union[Any, None]:
+    """Evaluates the rule returning the conclusion if the rule evaluates to True. 
+    Return None if the rule evaluates to False.
+
+    :param value: variables current values.
+    :type value: Any
+    :return: Logical rule evaluation. Conclusion if rule evaluates to True, None otherwise.
+    """
     pass
 
 class AbstractRuleSet(ABC):
+  """Rule set abstract class definition.
+
+  :param ABC: Abstract class base definition.
+  :type ABC: ABC abstract class. 
+  """
   pass
 
 class AbstractRuleExtractor(ABC):
+  """Abstract class for extracting rule sets from data and models.
+
+  :param ABC: Abstract class base definition.
+  :type ABC: ABC abstract class.
+  """
   @abstractmethod
   def extract_rules(self, X: Any, y: Any)-> Union[AbstractRuleSet, Set[AbstractRuleSet], List[AbstractRuleSet], None]:
+    """Extracts rule sets from data and models (classification and regression).
+
+    :param X: Input data (features).
+    :type X: Any
+    :param y: Input labels (predicted labels).
+    :type y: Any
+    """
     pass
 
 
 class TiebreakerStrategy(str, Enum):
+  """Enumeration strategy for tiebreaker, to break ties in the rule set.
+
+  :param str: string class definition.
+  :type str: str.
+  :param Enum: enumeration class definition.
+  :type Enum: Enum class.
+  """
   MAJORITY_CLASS = "majority_class"
   MINORITE_CLASS = "minority_class"
   HIGH_PERFORMANCE = "high_performance"
@@ -72,6 +98,13 @@ class TiebreakerStrategy(str, Enum):
   FIRST_HIT_RULE = "first_hit_rule"
 
 class Operators(str, Enum):
+  """Enumeration operators for logical expressions.
+
+  :param str: String class definition.
+  :type str: str.
+  :param Enum: Enumeration class definition.
+  :type Enum: Enum class.
+  """
   GREATER_THAN = ">"
   LESS_THAN = "<"
   EQUAL_TO = "=="
@@ -80,5 +113,12 @@ class Operators(str, Enum):
   LESS_OR_EQ = "<="
 
 class Mode(str, Enum):
+  """Task extraction mode classification or regression.
+
+  :param str: String class definition.
+  :type str: str
+  :param Enum: Enumeration class definition.
+  :type Enum: Enum class.
+  """
   CLASSIFICATION = "classification"
   REGRESSION = "regression"
