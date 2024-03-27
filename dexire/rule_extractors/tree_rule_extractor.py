@@ -11,6 +11,11 @@ from ..core.rule_set import RuleSet
 from ..core.clause import ConjunctiveClause, DisjunctiveClause
 
 class TreeRuleExtractor(AbstractRuleExtractor):
+  """Extract rules based on a decision tree.
+
+  :param AbstractRuleExtractor: Abstract class to rule extraction.
+  :type AbstractRuleExtractor: AbstractRuleExtractor
+  """
   def __init__(self,
                max_depth: int = 10,
                mode: Mode = Mode.CLASSIFICATION,
@@ -18,6 +23,22 @@ class TreeRuleExtractor(AbstractRuleExtractor):
                features_names: List[str] = None,
                class_names: List[str] = None,
                min_samples_split: float = 0.1) -> None:
+    """Constructor for TreeRuleExtractor.
+
+    :param max_depth: Maximum depth for the decision tree, defaults to 10
+    :type max_depth: int, optional
+    :param mode: Parameter to choose if it is classification or regression, defaults to Mode.CLASSIFICATION
+    :type mode: Mode, optional
+    :param criterion: Criterion to split the tree, defaults to 'gini'
+    :type criterion: str, optional
+    :param features_names: List of feature names, defaults to None
+    :type features_names: List[str], optional
+    :param class_names: List of class names, defaults to None
+    :type class_names: List[str], optional
+    :param min_samples_split: Min percentage of samples to split the tree, defaults to 0.1
+    :type min_samples_split: float, optional
+    :raises Exception: Not implemented mode if it is not Mode.CLASSIFICATION or Mode.REGRESSION.
+    """
     self.mode = mode
     self.model = None
     self.max_depth = max_depth
@@ -33,7 +54,13 @@ class TreeRuleExtractor(AbstractRuleExtractor):
     else:
       raise Exception("Mode not implemented")
 
-  def get_rules(self):
+  def get_rules(self) -> Union[AbstractRuleSet, Set[AbstractRuleSet], List[AbstractRuleSet], None]:
+    """Get the rules from the tree model.
+
+    :raises Exception: The model has not been defined! model: None
+    :return: extracted rule set.
+    :rtype: Union[AbstractRuleSet, Set[AbstractRuleSet], List[AbstractRuleSet], None]
+    """
     if self.model is not None:
       tree_ = self.model.tree_
     else:
@@ -77,7 +104,7 @@ class TreeRuleExtractor(AbstractRuleExtractor):
       # print(f"path: {path[:-1]}")
       # print(f"path: {path}")
       # all rules in a path are join by a conjuntion
-      rule_premise = ConjuntiveClause(path[:-1])
+      rule_premise = ConjunctiveClause(path[:-1])
       # there is not class names for example in regression
       if self.class_names is None:
         conclusion = "response: "+str(np.round(path[-1][0][0][0],3))
@@ -85,7 +112,7 @@ class TreeRuleExtractor(AbstractRuleExtractor):
         # there is class names
         classes = path[-1][0][0]
         l = np.argmax(classes)
-        conclusion = f"class: {class_names[l]}"
+        conclusion = f"class: {self.class_names[l]}"
       # calculate accuracy probability and coverage of the rule
       proba = np.round(100.0*classes[l]/np.sum(classes),2)
       coverage = path[-1][1]
@@ -99,10 +126,25 @@ class TreeRuleExtractor(AbstractRuleExtractor):
 
     return rs
 
-  def get_model(self):
+  def get_model(self) -> Union[DecisionTreeClassifier, DecisionTreeRegressor, None]:
+    """Returns the decision tree classifier or regressor model employed to extract the rules.
+
+    :return: The tree model employed to extract the rules. 
+    :rtype: Union[DecisionTreeClassifier, DecisionTreeRegressor, None]
+    """
     return self.model
 
   def extract_rules(self, X: Any, y: Any) -> Union[AbstractRuleSet, Set[AbstractRuleSet], List[AbstractRuleSet], None]:
+    """Train the tree model and extract rules from the dataset (X, y).
+
+    :param X: Input features dataset.
+    :type X: Any
+    :param y: Labels for dataset X.
+    :type y: Any
+    :raises Exception: No model. If the tree model has not been defined.
+    :return: Extracted rule set.
+    :rtype: Union[AbstractRuleSet, Set[AbstractRuleSet], List[AbstractRuleSet], None]
+    """
     if self.model is not None:
       # train the model
       self.model.fit(X, y)
