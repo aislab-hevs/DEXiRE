@@ -2,13 +2,29 @@ import numpy as np
 from typing import Any, Dict, List, Tuple, Union, Callable, Set
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
-from tensorflow.keras import Model
 
 from .rule_extractors.tree_rule_extractor import TreeRuleExtractor
+from .rule_extractors.one_rule_extracctor import OneRuleExtractor
+from .core.rule_set import RuleSet
+from .core.dexire_abstract import AbstractRuleExtractor, AbstractRuleSet
 
 
 class DEXiRE:
-  def __init__(self, model, feature_names: List[str]=None, class_names: List[str]=None):
+  """Deep Explanations and Rule Extraction pipeline to extract rules from a deep neural network.
+  """
+  def __init__(self, 
+               model: tf.keras.Model, 
+               feature_names: List[str]=None, 
+               class_names: List[str]=None) -> None:
+    """Constructor method to set up the DEXiRE pipeline.
+
+    :param model: Trained deep learning model to explain it (to extract rules from).
+    :type model: tf.keras.Model
+    :param feature_names: List of feature names, defaults to None
+    :type feature_names: List[str], optional
+    :param class_names: Target class names, defaults to None
+    :type class_names: List[str], optional
+    """
     self.model = model
     self.features_names = feature_names
     self.class_names = class_names
@@ -18,18 +34,52 @@ class DEXiRE:
     self.data_raw = {}
     self.data_transformed = {}
 
-  def get_intermediate_model(self, layer_idx: int):
-    intermediate_layer_model = Model(inputs=self.model.input,
+  def get_intermediate_model(self, layer_idx: int) -> tf.keras.Model:
+    """Get intermediate model from the deep learning model.
+
+    :param layer_idx: layer index to get the intermediate model.
+    :type layer_idx: int
+    :return: Intermediate model at a given layer index.
+    :rtype: tf.keras.Model
+    """
+    intermediate_layer_model = tf.keras.Model(inputs=self.model.input,
                                  outputs=self.model.layers[layer_idx].output)
     return intermediate_layer_model
 
-  def get_raw_data(self):
+  def get_raw_data(self) -> Dict[str, Any]:
+    """Get original input data.
+
+    :return: Get original data used to train the model.
+    :rtype: Dict[str, Any]
+    """
     return self.data_row
 
-  def get_data_transformed(self):
+  def get_data_transformed(self) -> Dict[str, np.array]:
+    """Get transformed input data at each layer of the model.
+
+    :return: Transformed input data at each layer of the model.
+    :rtype: Dict[str, np.array]
+    """
     return self.data_transformed
 
-  def extract_rules(self, X, y:np.array =None, layer_idx: int = -2, sample=None):
+  def extract_rules(self, 
+                    X:np.array =None, 
+                    y:np.array =None, 
+                    layer_idx: int = -2, 
+                    sample=None) -> List[AbstractRuleSet]:
+    """Extract rules from a deep neural network.
+
+    :param X: Input features dataset, defaults to None
+    :type X: np.array, optional
+    :param y: Labels for dataset X, defaults to None
+    :type y: np.array, optional
+    :param layer_idx: Index of first hidden layer, defaults to -2
+    :type layer_idx: int, optional
+    :param sample: sample percentage to extract rules from if None all examples will be used, defaults to None
+    :type sample: _type_, optional
+    :return: Rule set extracted from the deep neural network.
+    :rtype: List[AbstractRuleSet]
+    """
     self.data_raw['inputs'] = X
     self.data_raw['output'] = y
 
