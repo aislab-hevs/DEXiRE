@@ -1,4 +1,5 @@
 from typing import Any, Dict, List, Tuple, Union, Callable, Set
+import sympy as symp
 
 from .dexire_abstract import AbstractExpr, Operators
 
@@ -35,8 +36,20 @@ class Expr(AbstractExpr):
     self.vec_eval = None
 
   def __generate_sympy_expr(self):
-    #TODO: generate the logic expression with sympy.
-    pass
+    #Generate the logic expression with sympy.
+    try:
+      if self.symbolic_expression is None:
+        self.symbolic_expression = symp.parsing.sympy_parser.parse_expr(self.str_template.format(
+          feature=self.feature_name, 
+          operator=self.operator, 
+          threshold=self.threshold), evaluate=False)
+    except Exception as e:
+      print(f"Error generating symbolic expression: {e}")
+      
+  def get_symbolic_expression(self) -> symp.Expr:
+    if self.symbolic_expression is None:
+      self.__generate_sympy_expr()
+    return self.symbolic_expression
 
   def eval(self, value: Any) -> bool:
     """Evaluates the logical expression, returning true or false according to condition.

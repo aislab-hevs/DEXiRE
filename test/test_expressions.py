@@ -58,3 +58,29 @@ def test_expression_greater_or_eq_eval(create_expression_greater_or_eq):
     assert expr.eval(189.0008765433) == False
     assert expr.eval(189.0008765434) == True
     assert expr.eval(189.0008765435) == True
+    
+def test_symbolic_expression_generation_eq(create_expression):
+    expr = create_expression
+    symbolic_expr = expr.get_symbolic_expression()
+    assert symbolic_expr is not None
+
+def test_symbolic_expression_generation_less(create_expression_less):
+    expr = create_expression_less
+    symbolic_expr = expr.get_symbolic_expression()
+    assert symbolic_expr is not None
+    
+def test_symbolic_expression_generation_less_or_eq(create_expression_less_or_eq):
+    expr = create_expression_less_or_eq
+    symbolic_expr = expr.get_symbolic_expression()
+    assert symbolic_expr is not None
+    
+def test_symbolic_expression_generation_greater(create_expression_greater):
+    expr = create_expression_greater
+    symbolic_expr = expr.get_symbolic_expression()
+    assert symbolic_expr is not None
+    
+def test_symbolic_expression_generation_greater_or_eq(create_expression_greater_or_eq):
+    expr = create_expression_greater_or_eq
+    symbolic_expr = expr.get_symbolic_expression()
+    assert symbolic_expr is not None
+    
