@@ -17,7 +17,7 @@ class ConjunctiveClause(AbstractClause):
     """
     self.clauses = clauses
 
-  def eval(self, value: Any) -> bool:
+  def eval(self, value: List[Any]) -> bool:
     """Evaluates the conjunctive clause given variable values, returning True if all clauses are True, False otherwise.
 
     :param value: Values to evaluate the expression. 
@@ -26,7 +26,7 @@ class ConjunctiveClause(AbstractClause):
     :rtype: bool
     """
     value_list = []
-    print(value)
+    #print(value)
     for i in range(len(self.clauses)):
       value_list.append(self.clauses[i].eval(value[i]))
     return all(value_list)

@@ -12,18 +12,28 @@ def create_disjunctive_clause():
 
 @pytest.fixture
 def create_conjunctive_clause():
-    return ConjunctiveClause([Expr(0, 0.0, '==', 'feature_0'), Expr(0, 0.0, '==', 'feature_1')])
+    return ConjunctiveClause([Expr(0, 0.01, '==', 'feature_0'), Expr(1, 450.5690, '<=', 'feature_1')])
 
 def test_disjunctive_clause(create_disjunctive_clause):   
     disjunctive_clause = create_disjunctive_clause
     assert disjunctive_clause.get_feature_idx() == [0, 1]
     assert disjunctive_clause.get_feature_name() == ['feature_0', 'feature_1']
     assert len(disjunctive_clause) == 2
-    assert disjunctive_clause == DisjunctiveClause([Expr(0, 0, '==', 'feature_0'), Expr(0, 0, '==', 'feature_1')])
+    assert disjunctive_clause == DisjunctiveClause([Expr(0, 1.0, '>', 'feature_0'), Expr(1, -5.0, '<=', 'feature_1')])
     
 def test_conjunctive_clause(create_conjunctive_clause):
     conjunctive_clause = create_conjunctive_clause
     assert conjunctive_clause.get_feature_idx() == [0, 1]
     assert conjunctive_clause.get_feature_name() == ['feature_0', 'feature_1']
     assert len(conjunctive_clause) == 2
-    assert conjunctive_clause == ConjunctiveClause([Expr(0, 0, '==', 'feature_0'), Expr(0, 0, '==', 'feature_1')])
+    assert conjunctive_clause == ConjunctiveClause([Expr(0, 0.01, '==', 'feature_0'), Expr(1, 450.5690, '<=', 'feature_1')])
+    
+def test_disjunctive_clause_eval(create_disjunctive_clause):
+    disjunctive_clause = create_disjunctive_clause
+    assert disjunctive_clause.eval([1.01, -4.99]) == True
+    assert disjunctive_clause.eval([0.99, -4.0]) == False
+    
+def test_conjunctive_clause_eval(create_conjunctive_clause):
+    conjunctive_clause = create_conjunctive_clause
+    assert conjunctive_clause.eval([0.010, 450.568]) == True
+    assert conjunctive_clause.eval([0.010, 450.57]) == False
