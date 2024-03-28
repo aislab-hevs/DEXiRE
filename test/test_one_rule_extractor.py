@@ -1,7 +1,8 @@
-#TODO: Add tests for rule extraction with One rule method. 
+# Tests for rule extraction with One rule method. 
 import os
 import pytest
 import sys
+from sklearn.datasets import load_iris, make_classification
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from dexire.core.rule import Rule
@@ -13,18 +14,24 @@ from dexire.core.rule_set import RuleSet
 
 
 @pytest.fixture
-def create_rule():
-    return Rule([Expr(0, 0.0, '==', 'feature_0'), Expr(0, 0.0, '==', 'feature_1')])
-
-
-
+def create_classification_binary_dataset():
+    X, y = make_classification(n_classes=2, n_features=20, n_samples=100, random_state=42)
+    return X, y
 @pytest.fixture
-def create_rule_set():  
-    
-    return RuleSet([Rule([Expr(0, 0.0, '==', 'feature_0'), Expr(0, 0.0, '==', 'feature_1')]), Rule([Expr(0, 0.0, '==', 'feature_0'), Expr(0, 0.0, '==', 'feature_1')]), Rule([Expr(0, 0.0, '==', 'feature_0'), Expr(0, 0.0, '==', 'feature_1')]), Rule([Expr(0, 0.0, '==', 'feature_0'), Expr(0, 0.0, '==', 'feature_1')]), Rule([Expr(0, 0.0, '==', 'feature_0'), Expr(0, 0.0, '==', 'feature_1')])])
+def create_iris_dataset():
+    X, y = load_iris(return_X_y=True)
+    return X, y
 
-def test_rule_set(create_rule_set):
-    rule_set = create_rule_set
-    assert rule_set.get_feature_idx() == [0, 1]
-    assert rule_set.get_feature_name() == ['feature_0', 'feature_1']
-    assert len(rule_set) == 5
+def test_one_rule_extractor(create_classification_binary_dataset):
+    X, y = create_classification_binary_dataset
+    extractor = OneRuleExtractor(discretize=True)
+    rule_set = extractor.extract_rules(X, y)
+    assert isinstance(rule_set, RuleSet)
+    assert len(rule_set) > 0
+    
+def test_one_rule_extractor_iris(create_iris_dataset):
+    X, y = create_iris_dataset
+    extractor = OneRuleExtractor(discretize=True)
+    rule_set = extractor.extract_rules(X, y)
+    assert isinstance(rule_set, RuleSet)
+    assert len(rule_set) > 0

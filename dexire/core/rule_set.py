@@ -113,6 +113,13 @@ class RuleSet(AbstractRuleSet):
 
   def __repr__(self) -> str:
     return self.__str__()
+  
+  def __eq__(self, other: object) -> bool:
+    if isinstance(other, RuleSet):
+      return self.rules == other.rules
+    else:
+      return False
 
   def assess(self, X, y):
+    #TODO: implement
     pass
