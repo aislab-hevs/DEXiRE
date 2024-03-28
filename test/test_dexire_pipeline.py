@@ -1,4 +1,4 @@
-#TODO: Add tests for rule extraction full pipeline
+# Tests for rule extraction full pipeline
 import os
 import pytest
 import sys
