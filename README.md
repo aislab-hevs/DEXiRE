@@ -83,18 +83,18 @@ Once DEXIRE have been successfully installed can be used following the next step
 2. Create and configure the DEXiRE object in a python notebook or script:
    
     ```python
-        dexire = DEXiRE(model=model)
+    dexire = DEXiRE(model=model)
     ```
 
 3. Execute the rule extraction process, with the following method:
    
     ```python
-            rule_set = dexire.extract_rules(X_train, y_train)
+        rule_set = dexire.extract_rules(X_train, y_train)
     ```
 
 4. Visualize and use rules to predict:
     ```python
-        y_pred = rule_set.predict(X_test)
+    y_pred = rule_set.predict(X_test)
     ```
 
 
