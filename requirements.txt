@@ -4,3 +4,6 @@ pandas==2.2.1
 scikit-lear==1.4.1.post1
 sympy==1.12
 pytest==8.1.1
+matplotlib==3.8.3
+seaborn==0.13.2
+graphviz==0.20.3
