@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Tuple, Union, Callable, Set
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
 
+from .core.dexire_abstract import AbstractRuleExtractor, AbstractRuleSet, Mode
 from .rule_extractors.tree_rule_extractor import TreeRuleExtractor
 from .rule_extractors.one_rule_extracctor import OneRuleExtractor
 from .core.rule_set import RuleSet
@@ -15,7 +16,8 @@ class DEXiRE:
   def __init__(self, 
                model: tf.keras.Model, 
                feature_names: List[str]=None, 
-               class_names: List[str]=None) -> None:
+               class_names: List[str]=None,
+               mode: Mode = Mode.CLASSIFICATION) -> None:
     """Constructor method to set up the DEXiRE pipeline.
 
     :param model: Trained deep learning model to explain it (to extract rules from).
@@ -26,9 +28,22 @@ class DEXiRE:
     :type class_names: List[str], optional
     """
     self.model = model
+    self.mode = mode
     self.features_names = feature_names
     self.class_names = class_names
-    self.rule_extractor = TreeRuleExtractor(max_depth=200, features_names=self.features_names,
+    #check modes 
+    if self.mode!= Mode.CLASSIFICATION and self.mode!= Mode.REGRESSION:
+      raise Exception("Not implemented mode if it is not Mode.CLASSIFICATION or Mode.REGRESSION.")
+    elif self.mode == Mode.CLASSIFICATION:
+      # Classification mode
+      self.rule_extractor = TreeRuleExtractor(max_depth=200, 
+                                              features_names=self.features_names,
+                                              class_names = self.class_names)
+    else:
+      #TODO: implement Regression mode
+      pass
+    self.rule_extractor = TreeRuleExtractor(max_depth=200, 
+                                            features_names=self.features_names,
                                             class_names = self.class_names)
     self.intermediate_model = None
     self.data_raw = {}
