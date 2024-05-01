@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from dexire.core.rule import Rule
 from dexire.core.expression import Expr
 from dexire.core.clause import DisjunctiveClause, ConjunctiveClause
-from dexire.rule_extractors.one_rule_extracctor import OneRuleExtractor
+from dexire.rule_extractors.one_rule_extractor import OneRuleExtractor
 from dexire.core.rule_set import RuleSet
 
 

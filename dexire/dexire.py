@@ -5,7 +5,7 @@ import tensorflow as tf
 
 from .core.dexire_abstract import AbstractRuleExtractor, AbstractRuleSet, Mode
 from .rule_extractors.tree_rule_extractor import TreeRuleExtractor
-from .rule_extractors.one_rule_extracctor import OneRuleExtractor
+from .rule_extractors.one_rule_extractor import OneRuleExtractor
 from .core.rule_set import RuleSet
 from .core.dexire_abstract import AbstractRuleExtractor, AbstractRuleSet
 
