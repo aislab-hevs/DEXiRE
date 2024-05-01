@@ -8,7 +8,7 @@ REQUIREMENTS = [
 'numpy==1.26.4',
 'tensorflow==2.15.0',
 'pandas==2.2.1',
-'scikit-lear==1.4.1.post1',
+'scikit-learn==1.4.1.post1',
 'sympy==1.12',
 'pytest==8.1.1',
 'matplotlib==3.8.3',
