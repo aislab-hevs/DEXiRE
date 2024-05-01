@@ -1,7 +1,15 @@
-from typing import Any, Callable, Union, List
+from typing import Any, Callable, Union, List, Dict
 import numpy as np
+from sklearn.metrics import (mean_absolute_error, 
+                             mean_squared_error, 
+                             r2_score,
+                             accuracy_score,
+                             precision_score,
+                             recall_score,
+                             f1_score, 
+                             roc_auc_score)
 
-from .dexire_abstract import AbstractRule, AbstractRuleSet, TiebreakerStrategy
+from .dexire_abstract import AbstractRule, AbstractRuleSet, TiebreakerStrategy, Mode
 
 class RuleSet(AbstractRuleSet):
   def __init__(self,
@@ -25,6 +33,94 @@ class RuleSet(AbstractRuleSet):
 
   def add_rules(self, rule: List[AbstractRule]):
       self.rules += rule
+      
+      
+  def answer_preprocessor(self, 
+                 Y_hat: np.array, 
+                 tiebreakerStrategy: TiebreakerStrategy = TiebreakerStrategy.FIRST_HIT_RULE) -> Any:
+    # Check if the tiebreaker strategy is in the tiebreaker enum
+    final_answer = []
+    decision_path = []
+    if tiebreakerStrategy not in TiebreakerStrategy:
+      raise ValueError(f"Tiebreaker strategy {tiebreakerStrategy} is not in the tiebreaker enumeration")
+    if tiebreakerStrategy == TiebreakerStrategy.MAJORITY_CLASS:
+      for i in range(Y_hat.shape[0]):
+        mask = Y_hat[i, :] != None
+        if np.sum(mask) == 0:
+          final_answer.append(self.defaultRule())
+          decision_path.append(["default_rule"])
+        else:
+          classes, counts = np.unique(Y_hat[i, mask], return_counts=True)
+          max_class = classes[np.argmax(counts)]
+          final_answer.append(max_class)
+          rule_mask = Y_hat[i, :] == max_class
+          decision_path.append(list(np.array(self.rules)[rule_mask]))
+    elif tiebreakerStrategy == TiebreakerStrategy.MINORITE_CLASS:
+        for i in range(Y_hat.shape[0]):
+          mask = Y_hat[i, :] != None
+          if np.sum(mask) == 0:
+            final_answer.append(self.defaultRule())
+            decision_path.append(["default_rule"])
+          else:
+            classes, counts = np.unique(Y_hat[i, mask], return_counts=True)
+            min_class = classes[np.argmin(counts)]
+            final_answer.append(min_class)
+            rule_mask = Y_hat[i, :] == min_class
+            decision_path.append(list(np.array(self.rules)[rule_mask]))
+    elif tiebreakerStrategy == TiebreakerStrategy.HIGH_PERFORMANCE:
+        for i in range(Y_hat.shape[0]):
+          mask = Y_hat[i, :] != None
+          if np.sum(mask) == 0:
+            final_answer.append(self.defaultRule())
+            decision_path.append(["default_rule"])
+          else:
+            filtered_rules = list(np.array(self.rules)[mask])
+            accuracy = [rule.accuracy for rule in filtered_rules]
+            max_accuracy_index = np.argmax(accuracy)
+            final_answer.append(filtered_rules[max_accuracy_index].conclusion)
+            decision_path.append([filtered_rules[max_accuracy_index]])
+    elif tiebreakerStrategy == TiebreakerStrategy.HIGH_COVERAGE:
+        for i in range(Y_hat.shape[0]):
+          mask = Y_hat[i, :] != None
+          if np.sum(mask) == 0:
+            final_answer.append(self.defaultRule())
+            decision_path.append(["default_rule"])
+          else:
+            filtered_rules = list(np.array(self.rules)[mask])
+            coverage = [rule.coverage for rule in filtered_rules]
+            max_coverage_index = np.argmax(coverage)
+            final_answer.append(filtered_rules[max_coverage_index].conclusion)
+            decision_path.append([filtered_rules[max_coverage_index]])
+    elif tiebreakerStrategy == TiebreakerStrategy.FIRST_HIT_RULE:
+      for i in range(Y_hat.shape[0]):
+        mask = Y_hat[i, :] != None
+        if np.sum(mask) == 0:
+          final_answer.append(self.defaultRule())
+          decision_path.append(["default_rule"])
+        else:
+          for j in range(Y_hat.shape[1]):
+            if Y_hat[i, j]!= None:
+              final_answer.append(Y_hat[i, j])
+              decision_path.append([self.rules[j]])
+              break
+    return np.array(final_answer), decision_path
+  
+  
+  def predict_numpy_rules(self, 
+                          X: np.array, 
+                          tiebreakerStrategy: TiebreakerStrategy = TiebreakerStrategy.FIRST_HIT_RULE,
+                          return_decision_path: bool = False) -> Any:
+    # fast inference using numpy 
+    partial_answer = [rule.predict(X) for rule in self.rules]
+    Y_hat = np.array(partial_answer)
+    final_decision, decision_path = self.answer_preprocessor(Y_hat.T, 
+                                                             tiebreakerStrategy)
+    if not return_decision_path:
+      return final_decision
+    else:
+      return final_decision, decision_path
+      
+    
 
   def __predict_one_row(self, data_row,
                       tiebreakerStrategy: TiebreakerStrategy = TiebreakerStrategy.FIRST_HIT_RULE):
@@ -120,6 +216,29 @@ class RuleSet(AbstractRuleSet):
     else:
       return False
 
-  def assess(self, X, y):
-    #TODO: implement
-    pass
+  def assess_rule_set(self, 
+             X: np.array, 
+             y_true: np.array, 
+             evaluation_method: Dict[str, Callable] = None, 
+             mode: Mode = Mode.CLASSIFICATION) -> Dict[str, float]:
+    answer_dict = {}
+    if evaluation_method is None:
+      if mode == Mode.CLASSIFICATION:
+        evaluation_method = {
+          "accuracy": accuracy_score,
+          "precision": precision_score,
+          "recall": recall_score,
+          "f1": f1_score,
+          "roc_auc": roc_auc_score
+        }
+      elif mode == Mode.REGRESSION:
+        evaluation_method = {
+          "mse": mean_squared_error,
+          "mae": mean_absolute_error,
+          "r2": r2_score
+        }
+      else:
+        raise(f"Mode {mode} not supported")
+    for key in evaluation_method.keys():
+      y_pred = self.predict_numpy_rules(X)
+      answer_dict[key] = evaluation_method[key](y_true, y_pred)

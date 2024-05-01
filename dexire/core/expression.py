@@ -1,5 +1,7 @@
 from typing import Any, Dict, List, Tuple, Union, Callable, Set
+from sympy import Symbol, Eq, Or, And, symbols, lambdify
 import sympy as symp
+import numpy as np
 
 from .dexire_abstract import AbstractExpr, Operators
 
@@ -34,6 +36,7 @@ class Expr(AbstractExpr):
     self.symbolic_expression = None
     self.str_template = "({feature} {operator} {threshold})"
     self.vec_eval = None
+    self.lambda_func = None
 
   def __generate_sympy_expr(self):
     #Generate the logic expression with sympy.
@@ -46,9 +49,20 @@ class Expr(AbstractExpr):
     except Exception as e:
       print(f"Error generating symbolic expression: {e}")
       
+  def _create_symbolic_expression(self) -> None:
+    self.__generate_sympy_expr()
+    symbols_in_expr = list(self.symbolic_expression.free_symbols)
+    # lambdify expression
+    self.lambda_func = lambdify(symbols_in_expr, self.symbolic_expression, 'numpy')
+  
+  def numpy_eval(self, X: np.array) -> bool:
+    if self.symbolic_expression is None or self.lambda_func is None:
+      self._create_symbolic_expression()
+    return self.lambda_func(X)
+  
   def get_symbolic_expression(self) -> symp.Expr:
     if self.symbolic_expression is None:
-      self.__generate_sympy_expr()
+      self._create_symbolic_expression()
     return self.symbolic_expression
 
   def eval(self, value: Any) -> bool:

@@ -42,7 +42,7 @@ class DEXiRE:
       if self.mode!= Mode.CLASSIFICATION and self.mode!= Mode.REGRESSION:
         raise Exception(f"Not implemented mode: {self.mode} if it is not Mode.CLASSIFICATION or Mode.REGRESSION.")
       # Check if the name of rule extractor is registered 
-      if self.rule_extractor not in RuleExtractorEnum.__members__:
+      if self.rule_extractor not in RuleExtractorEnum:
         raise Exception("Rule extractor not implemented")
       elif self.rule_extractor == RuleExtractorEnum.ONERULE:
         self.rule_extractor = OneRuleExtractor(

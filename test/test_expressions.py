@@ -1,6 +1,7 @@
 import os
 import pytest
 import sys
+import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from dexire.core.expression import Expr
@@ -84,3 +85,16 @@ def test_symbolic_expression_generation_greater_or_eq(create_expression_greater_
     symbolic_expr = expr.get_symbolic_expression()
     assert symbolic_expr is not None
     
+def test_numpy_eval(create_expression):
+    expr = create_expression
+    input_values = np.array([0.0, 1.0, -1.0])
+    expected = np.array([True, False, False])
+    result = expr.numpy_eval(input_values)
+    assert (result == expected).all()
+    
+def test_numpy_eval_less_or_eq(create_expression_less_or_eq):
+    expr = create_expression_less_or_eq
+    input_values = np.array([2.678900, 2.0, 2.7])
+    expected = np.array([True, True, False])
+    result = expr.numpy_eval(input_values)
+    assert (result == expected).all()

@@ -1,4 +1,7 @@
 from typing import Any, Dict, List, Tuple, Union, Callable, Set, Iterator
+from sympy import Symbol, Eq, Or, And, symbols, lambdify
+import sympy as symp
+import numpy as np
 
 from.expression import Expr
 from .dexire_abstract import AbstractClause
@@ -16,6 +19,25 @@ class ConjunctiveClause(AbstractClause):
     :type clauses: List[Union[Expr, AbstractClause]], optional
     """
     self.clauses = clauses
+    self.symbolic_clause = None
+    self.lambda_func = None
+    
+  def _create_symbolic_clause(self) -> None:
+    sym_list = [expr.get_symbolic_expression() for expr in self.clauses]
+    self.symbolic_clause = And(*sym_list)
+    symbols_in_expr = list(self.symbolic_clause.free_symbols)
+    # lambdify expression
+    self.lambda_func = lambdify(symbols_in_expr, self.symbolic_clause, 'numpy')
+    
+  def get_symbolic_clause(self) -> symp.Expr:
+    if self.symbolic_clause is None:
+      self._create_symbolic_clause()
+    return self.symbolic_clause
+  
+  def numpy_eval(self, X: np.array) -> bool:
+    if self.symbolic_clause is None or self.lambda_func is None:
+      self._create_symbolic_clause()
+    return self.lambda_func(*X.T)
 
   def eval(self, value: List[Any]) -> bool:
     """Evaluates the conjunctive clause given variable values, returning True if all clauses are True, False otherwise.
@@ -38,6 +60,7 @@ class ConjunctiveClause(AbstractClause):
     :type clause: List[Expr]
     """
     self.clauses += clause
+    self._create_symbolic_clause()
 
   def get_feature_idx(self) -> List[int]:
     """Get the feature indexes list used in this conjunctive clause.
@@ -128,6 +151,20 @@ class DisjunctiveClause(AbstractClause):
     :type clauses: List[Union[Expr, AbstractClause]], optional
     """
     self.clauses = clauses
+    self.symbolic_clause = None
+    self.lambda_func = None
+    
+  def _create_symbolic_clause(self) -> None:
+    sym_list = [expr.get_symbolic_expression() for expr in self.clauses]
+    self.symbolic_clause = Or(*sym_list)
+    symbols_in_expr = list(self.symbolic_clause.free_symbols)
+    # lambdify expression
+    self.lambda_func = lambdify(symbols_in_expr, self.symbolic_clause, 'numpy')
+    
+  def get_symbolic_clause(self) -> symp.Expr:
+    if self.symbolic_clause is None:
+      self._create_symbolic_clause()
+    return self.symbolic_clause
 
   def get_feature_idx(self) -> List[int]:
     """Get the feature indexes list used in this disjunctive clause.
@@ -152,6 +189,12 @@ class DisjunctiveClause(AbstractClause):
     :type clause: List[Expr]
     """
     self.clauses += clause
+    self._create_symbolic_clause()
+
+  def numpy_eval(self, X: np.array) -> bool:
+    if self.symbolic_clause is None or self.lambda_func is None:
+      self._create_symbolic_clause()
+    return self.lambda_func(*X.T)
 
   def eval(self, value: List[Any]) -> bool:
     """Evaluates the disjunctive clause given variable values, returning True if any clause is True,

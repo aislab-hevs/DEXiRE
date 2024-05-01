@@ -1,6 +1,7 @@
 import os
 import pytest
 import sys
+import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from dexire.core.expression import Expr
@@ -37,3 +38,23 @@ def test_conjunctive_clause_eval(create_conjunctive_clause):
     conjunctive_clause = create_conjunctive_clause
     assert conjunctive_clause.eval([0.010, 450.568]) == True
     assert conjunctive_clause.eval([0.010, 450.57]) == False
+    
+def test_disjunction_eval_numpy(create_disjunctive_clause):
+    disjunctive_clause = create_disjunctive_clause
+    eval_matrix = np.array([
+        [1.2, -4.8],
+        [0.9, -6.0],
+        [0.9, -4.8]])
+    expected = np.array([True, True, False])
+    prediction = disjunctive_clause.numpy_eval(eval_matrix)
+    assert (prediction == expected).all()
+
+def test_conjunction_eval_numpy(create_conjunctive_clause):
+    conjunctive_clause = create_conjunctive_clause
+    eval_matrix = np.array([
+        [0.01, 451.0],
+        [0.01, 450.5],
+        [0.02, 450.0]])
+    expected = np.array([False, True, False])
+    prediction = conjunctive_clause.numpy_eval(eval_matrix)
+    assert (prediction == expected).all()

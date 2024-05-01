@@ -2,6 +2,7 @@
 import os
 import pytest
 import sys
+import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from dexire.core.rule import Rule
@@ -36,3 +37,18 @@ def test_rule_eval(create_rule):
     rule = create_rule
     assert rule.eval([3.1, -1.1]) == 'Class 1'
     assert rule.eval([3.0, -1.1]) is None
+    
+def test_numpy_eval(create_rule):
+    rule = create_rule
+    eval_matrix = np.array([
+        [3.1, -1.1],
+        [3.0, -1.1]])
+    expected = np.array(['Class 1', None])
+    prediction = rule.numpy_eval(eval_matrix)
+    assert (prediction == expected).all()
+    
+def test_predict(create_rule):
+    rule = create_rule
+    prediction = rule.predict(np.array([[3.1, -1.1, 10], [3.0, -1.1, 12]]))
+    expected = np.array(['Class 1', None])
+    assert (prediction == expected).all()
