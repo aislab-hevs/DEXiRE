@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Tuple, Union, Callable, Set
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
 
-from .core.dexire_abstract import AbstractRuleExtractor, AbstractRuleSet, Mode
+from .core.dexire_abstract import AbstractRuleExtractor, AbstractRuleSet, Mode, RuleExtractorEnum
 from .rule_extractors.tree_rule_extractor import TreeRuleExtractor
 from .rule_extractors.one_rule_extractor import OneRuleExtractor
 from .core.rule_set import RuleSet
@@ -17,6 +17,7 @@ class DEXiRE:
                model: tf.keras.Model, 
                feature_names: List[str]=None, 
                class_names: List[str]=None,
+               rule_extractor: Union[str, AbstractRuleExtractor]=RuleExtractorEnum.TREERULE,
                mode: Mode = Mode.CLASSIFICATION) -> None:
     """Constructor method to set up the DEXiRE pipeline.
 
@@ -29,25 +30,41 @@ class DEXiRE:
     """
     self.model = model
     self.mode = mode
+    self.rule_extractor = rule_extractor
     self.features_names = feature_names
     self.class_names = class_names
-    #check modes 
-    if self.mode!= Mode.CLASSIFICATION and self.mode!= Mode.REGRESSION:
-      raise Exception("Not implemented mode if it is not Mode.CLASSIFICATION or Mode.REGRESSION.")
-    elif self.mode == Mode.CLASSIFICATION:
-      # Classification mode
-      self.rule_extractor = TreeRuleExtractor(max_depth=200, 
-                                              features_names=self.features_names,
-                                              class_names = self.class_names)
-    else:
-      #TODO: implement Regression mode
-      pass
-    self.rule_extractor = TreeRuleExtractor(max_depth=200, 
-                                            features_names=self.features_names,
-                                            class_names = self.class_names)
     self.intermediate_model = None
     self.data_raw = {}
     self.data_transformed = {}
+    if not issubclass(self.rule_extractor, AbstractRuleExtractor) \
+      and issubclass(self.rule_extractor, str):
+      # Check modes 
+      if self.mode!= Mode.CLASSIFICATION and self.mode!= Mode.REGRESSION:
+        raise Exception(f"Not implemented mode: {self.mode} if it is not Mode.CLASSIFICATION or Mode.REGRESSION.")
+      # Check if the name of rule extractor is registered 
+      if self.rule_extractor not in RuleExtractorEnum.__members__:
+        raise Exception("Rule extractor not implemented")
+      elif self.rule_extractor == RuleExtractorEnum.ONERULE:
+        self.rule_extractor = OneRuleExtractor(
+          features_names=self.features_names,
+          mode=self.mode
+        )
+      elif self.rule_extractor == RuleExtractorEnum.TREERULE:
+        self.rule_extractor = TreeRuleExtractor(max_depth=200, 
+                                                mode=self.mode,
+                                                features_names=self.features_names,
+                                                class_names = self.class_names)
+      elif self.rule_extractor == RuleExtractorEnum.MIXED:
+        self.rule_extractor = {
+          "oneR": OneRuleExtractor(
+            features_names=self.features_names,
+            mode=self.mode
+          ),
+          "treeR": TreeRuleExtractor(max_depth=200, 
+                                    mode=self.mode,
+                                    features_names=self.features_names,
+                                    class_names = self.class_names)
+        }
 
   def get_intermediate_model(self, layer_idx: int) -> tf.keras.Model:
     """Get intermediate model from the deep learning model.

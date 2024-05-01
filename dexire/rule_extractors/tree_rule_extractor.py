@@ -52,7 +52,7 @@ class TreeRuleExtractor(AbstractRuleExtractor):
     elif self.mode == Mode.REGRESSION:
       self.model = DecisionTreeRegressor(max_depth=self.max_depth, criterion=self.criterion)
     else:
-      raise Exception("Mode not implemented")
+      raise Exception(f"Mode {self.mode} not implemented")
 
   def get_rules(self) -> Union[AbstractRuleSet, Set[AbstractRuleSet], List[AbstractRuleSet], None]:
     """Get the rules from the tree model.
@@ -106,15 +106,23 @@ class TreeRuleExtractor(AbstractRuleExtractor):
       # all rules in a path are join by a conjuntion
       rule_premise = ConjunctiveClause(path[:-1])
       # there is not class names for example in regression
-      if self.class_names is None:
-        conclusion = "response: "+str(np.round(path[-1][0][0][0],3))
-      else:
-        # there is class names
-        classes = path[-1][0][0]
-        l = np.argmax(classes)
-        conclusion = f"class: {self.class_names[l]}"
-      # calculate accuracy probability and coverage of the rule
-      proba = np.round(100.0*classes[l]/np.sum(classes),2)
+      if self.mode == Mode.REGRESSION:
+        # Regression mode there is not classes 
+        conclusion = str(np.round(path[-1][0][0][0],3))
+        proba = None
+      elif self.mode == Mode.CLASSIFICATION:
+        if self.class_names is None:
+          conclusion = str(np.round(path[-1][0][0][0],3))
+          classes = path[-1][0][0]
+        else:
+          # there is class names
+          classes = path[-1][0][0]
+          l = np.argmax(classes)
+          conclusion = self.class_names[l]
+        # calculate accuracy probability and coverage of the rule
+        proba = np.round(100.0*classes[l]/np.sum(classes),2)
+      else: 
+        raise Exception(f"Mode {self.mode} not implemented")
       coverage = path[-1][1]
       # create the rule
       rule = Rule(premise=rule_premise,
@@ -123,7 +131,6 @@ class TreeRuleExtractor(AbstractRuleExtractor):
                   coverage=coverage)
       # add the rule to the rule set
       rs.add_rules([rule])
-
     return rs
 
   def get_model(self) -> Union[DecisionTreeClassifier, DecisionTreeRegressor, None]:

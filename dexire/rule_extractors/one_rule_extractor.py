@@ -15,14 +15,16 @@ class OneRuleExtractor(AbstractRuleExtractor):
   :type AbstractRuleExtractor: AbstractRuleExtractor
   """
 
-  def __init__(self, features_names:List[str]=None,
+  def __init__(self, 
+               features_names:List[str]=None,
                majority_class:Any=None,
                discretize:bool=False,
                columns_to_discretize:List[int]=None,
                mode=Mode.CLASSIFICATION,
                precision_decimal:int=4,
                minimum_coverage:Union[int, float]=0.1,
-               minimum_accuracy: float = 0.51) -> None:
+               minimum_accuracy: float = 0.51, 
+               regression_resolution_quantization: int = 255) -> None:
     """Constructor for OneRuleExtractor.
 
     :param features_names:List of feature names to include in the rules, defaults to None
@@ -46,6 +48,8 @@ class OneRuleExtractor(AbstractRuleExtractor):
     self.features_names = features_names
     self.majority_class = majority_class
     self.mode = mode
+    self.regression_resolution_quantization = regression_resolution_quantization
+    self.regression_bins = None
     self.X = None
     self.y = None
     self.bins_dict = {}
@@ -68,6 +72,16 @@ class OneRuleExtractor(AbstractRuleExtractor):
         digitalized_column, bins = self.digitalize_column(self.X, col_idx)
         self.X[:, col_idx] = digitalized_column
         self.bins_dict[col_idx] = bins
+    # in case of regression
+    if self.mode == Mode.REGRESSION:
+      self.y = self.y.reshape(-1, 1)
+      if self.regression_resolution_quantization <= 2:
+        raise Exception("The regression_resolution_quantization must be greater than 2.")
+      # transform the regression input 
+      self.y, self.regression_bins = self.digitalize_column(self.y, 
+                                                            col_idx=0, 
+                                                            n_bins=self.regression_bins) 
+      
 
   def post_processing_rules(self) -> Union[AbstractRuleSet, Set[AbstractRuleSet], List[AbstractRuleSet], None]:
     """Transform discretized rules to original values. 
@@ -82,6 +96,10 @@ class OneRuleExtractor(AbstractRuleExtractor):
       else:
         transformed_rule = rule
       transformed_rules.append(transformed_rule)
+      # transform output in regression mode
+      if self.mode == Mode.REGRESSION:
+        transformed_rule = self.transform_rule(transformed_rule)
+      transformed_rules.append(transformed_rule)
     return transformed_rules
 
   def transform_rule(self, rule: Rule) -> Rule:
@@ -94,11 +112,18 @@ class OneRuleExtractor(AbstractRuleExtractor):
     """
     transformed_premise = self.inverse_digitalize_exp(rule.premise,
                                                       self.bins_dict[rule.premise.feature_idx])
+    if self.mode == Mode.REGRESSION and self.regression_bins:
+      transformed_conclusion = self.inverse_digitalize_exp(rule.conclusion,
+                                                          self.regression_bins)
+    else:
+      transformed_conclusion = rule.conclusion
     transformed_rule = Rule(premise=transformed_premise,
-                            conclusion=rule.conclusion,
+                            conclusion=transformed_conclusion,
                             proba=rule.proba,
                             accuracy=rule.accuracy,
                             coverage=rule.coverage)
+    
+      
     return transformed_rule
 
   def get_rules(self) -> Union[AbstractRuleSet, Set[AbstractRuleSet], List[AbstractRuleSet], None]:

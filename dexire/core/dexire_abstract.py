@@ -122,3 +122,16 @@ class Mode(str, Enum):
   """
   CLASSIFICATION = "classification"
   REGRESSION = "regression"
+  
+class RuleExtractorEnum(str, Enum):
+  """Enumerates the different rule extraction approaches
+
+  :param str: String class definition.
+  :type str: str
+  :param Enum: Enumeration class definition.
+  :type Enum: Enum class.
+  """
+  
+  ONERULE = "oneR"
+  TREERULE = "treeR"
+  MIXED = "mixed" # Combines one rule and tree rule extractor 

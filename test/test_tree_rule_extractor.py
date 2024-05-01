@@ -46,3 +46,12 @@ def test_tree_rule_extractor_iris(create_iris_dataset):
     rule_set = extractor.extract_rules(X, y)
     assert isinstance(rule_set, RuleSet)
     assert len(rule_set) > 0
+    
+def test_tree_rule_extractor_regression(create_regression_dataset):
+    X, y = create_regression_dataset
+    extractor = TreeRuleExtractor(max_depth=5,
+                                  mode=Mode.REGRESSION,
+                                  criterion="absolute_error")
+    rule_set = extractor.extract_rules(X, y)
+    assert isinstance(rule_set, RuleSet)
+    assert len(rule_set) > 0
