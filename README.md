@@ -118,7 +118,7 @@ Thanks to the following people who have contributed to this project:
 
 - [@victorc365](https://github.com/victorc365) 📖
 - [@ilmaro8](https://github.com/ilmaro8)
-- Lora Fanda
+- [@lorafanda](https://github.com/lorafanda)
 
 ## Acknowledge  
 
