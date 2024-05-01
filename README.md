@@ -25,13 +25,7 @@ Before you begin, ensure you have met the following requirements:
 
 To install DEXiRE, follow these steps:
 
-Linux and macOS:
-
-```
-python -m pip install --upgrade setuptools
-```
-
-Windows:
+Windows, Linux and macOS:
 
 ```
 python -m pip install --upgrade setuptools
