@@ -23,6 +23,8 @@ class ConjunctiveClause(AbstractClause):
     self.lambda_func = None
     
   def _create_symbolic_clause(self) -> None:
+    """_summary_
+    """
     sym_list = [expr.get_symbolic_expression() for expr in self.clauses]
     self.symbolic_clause = And(*sym_list)
     symbols_in_expr = list(self.symbolic_clause.free_symbols)
@@ -30,11 +32,23 @@ class ConjunctiveClause(AbstractClause):
     self.lambda_func = lambdify(symbols_in_expr, self.symbolic_clause, 'numpy')
     
   def get_symbolic_clause(self) -> symp.Expr:
+    """_summary_
+
+    :return: _description_
+    :rtype: symp.Expr
+    """
     if self.symbolic_clause is None:
       self._create_symbolic_clause()
     return self.symbolic_clause
   
   def numpy_eval(self, X: np.array) -> bool:
+    """_summary_
+
+    :param X: _description_
+    :type X: np.array
+    :return: _description_
+    :rtype: bool
+    """
     if self.symbolic_clause is None or self.lambda_func is None:
       self._create_symbolic_clause()
     return self.lambda_func(*X.T)
@@ -155,6 +169,8 @@ class DisjunctiveClause(AbstractClause):
     self.lambda_func = None
     
   def _create_symbolic_clause(self) -> None:
+    """_summary_
+    """
     sym_list = [expr.get_symbolic_expression() for expr in self.clauses]
     self.symbolic_clause = Or(*sym_list)
     symbols_in_expr = list(self.symbolic_clause.free_symbols)
@@ -162,6 +178,11 @@ class DisjunctiveClause(AbstractClause):
     self.lambda_func = lambdify(symbols_in_expr, self.symbolic_clause, 'numpy')
     
   def get_symbolic_clause(self) -> symp.Expr:
+    """_summary_
+
+    Returns:
+        symp.Expr: _description_
+    """
     if self.symbolic_clause is None:
       self._create_symbolic_clause()
     return self.symbolic_clause

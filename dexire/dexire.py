@@ -94,7 +94,7 @@ class DEXiRE:
     """
     return self.data_transformed
 
-  def extract_rules(self, 
+  def extract_rules_at_layer(self, 
                     X:np.array =None, 
                     y:np.array =None, 
                     layer_idx: int = -2, 
@@ -132,4 +132,39 @@ class DEXiRE:
       print(f"sample shape: {x.shape} label sample: {y.shape}")
     rules = []
     rules = self.rule_extractor.extract_rules(x, y)
+    return rules
+
+
+  def extract_rules(self, 
+                    X: np.array, 
+                    y: np.array, 
+                    sample: float = None, 
+                    stratify: bool = False,
+                    layer_idx: List[int]= None):
+    # check model instance 
+    model_type = None 
+    if isinstance(self.model, tf.keras.Sequential):
+      model_type = "sequential"
+    elif isinstance(self.model, tf.keras.Model):
+      model_type = "functional"
+    else:
+      raise Exception(f"The model is not sequential or functional API and cannot be processed.")
+    if layer_idx is None:
+      layers = self.model.layers 
+      start_value = 0
+      if model_type == "functional":
+        start_value = 1
+      # detect candidate layers  from functional model
+      candidate_layers = []
+      for layer_idx in range(start_value, len(layers)-1):
+        if isinstance(layers[layer_idx], tf.keras.layers.Dense):
+          candidate_layers.append(layer_idx)
+    else:
+      candidate_layers = layer_idx
+      #TODO: Check if the provide layer_idx matches the model architecture
+    # extract rules from each layer 
+    rules = []
+    for layer_idx in candidate_layers:
+      print(f"Extracting rules from layer: {layer_idx}")
+      rules.append(self.extract_rules_at_layer(X=X, y=y, layer_idx=layer_idx, sample=sample, stratify=stratify))
     return rules
