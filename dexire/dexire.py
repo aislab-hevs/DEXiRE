@@ -3,11 +3,16 @@ from typing import Any, Dict, List, Tuple, Union, Callable, Set
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
 
-from .core.dexire_abstract import AbstractRuleExtractor, AbstractRuleSet, Mode, RuleExtractorEnum
+from .core.dexire_abstract import (AbstractRuleExtractor, 
+                                   AbstractRuleSet, 
+                                   Mode, 
+                                   RuleExtractorEnum,
+                                   TiebreakerStrategy)
 from .rule_extractors.tree_rule_extractor import TreeRuleExtractor
 from .rule_extractors.one_rule_extractor import OneRuleExtractor
 from .core.rule_set import RuleSet
 from .core.dexire_abstract import AbstractRuleExtractor, AbstractRuleSet
+from .utils.activation_discretizer import discretize_activation_layer
 
 
 class DEXiRE:
@@ -17,8 +22,10 @@ class DEXiRE:
                model: tf.keras.Model, 
                feature_names: List[str]=None, 
                class_names: List[str]=None,
-               rule_extractor: Union[str, AbstractRuleExtractor]=RuleExtractorEnum.TREERULE,
-               mode: Mode = Mode.CLASSIFICATION) -> None:
+               rule_extractor: Union[None, AbstractRuleExtractor] = None,
+               mode: Mode = Mode.CLASSIFICATION,
+               rule_extraction_method: RuleExtractorEnum = RuleExtractorEnum.TREERULE,
+               tie_breaker_strategy: TiebreakerStrategy = TiebreakerStrategy.FIRST_HIT_RULE ) -> None:
     """Constructor method to set up the DEXiRE pipeline.
 
     :param model: Trained deep learning model to explain it (to extract rules from).
@@ -30,37 +37,40 @@ class DEXiRE:
     """
     self.model = model
     self.mode = mode
+    self.rule_extraction_method = rule_extraction_method
+    self.tie_breaker_strategy = tie_breaker_strategy
     self.rule_extractor = rule_extractor
     self.features_names = feature_names
     self.class_names = class_names
-    self.intermediate_model = None
+    self.intermediate_rules = {}
+    self.intermediate_model = {}
     self.data_raw = {}
+    self.final_rule_set = None
     self.data_transformed = {}
-    if not issubclass(self.rule_extractor, AbstractRuleExtractor) \
-      and issubclass(self.rule_extractor, str):
+    if self.rule_extractor is None:
       # Check modes 
       if self.mode!= Mode.CLASSIFICATION and self.mode!= Mode.REGRESSION:
         raise Exception(f"Not implemented mode: {self.mode} if it is not Mode.CLASSIFICATION or Mode.REGRESSION.")
       # Check if the name of rule extractor is registered 
-      if self.rule_extractor not in RuleExtractorEnum:
-        raise Exception("Rule extractor not implemented")
-      elif self.rule_extractor == RuleExtractorEnum.ONERULE:
-        self.rule_extractor = OneRuleExtractor(
+      if self.rule_extraction_method not in RuleExtractorEnum:
+        raise Exception(f"Rule extractor: {self.rule_extraction_method} not implemented.")
+      elif self.rule_extraction_method == RuleExtractorEnum.ONERULE:
+        self.rule_extractor = {RuleExtractorEnum.ONERULE :OneRuleExtractor(
           features_names=self.features_names,
           mode=self.mode
-        )
-      elif self.rule_extractor == RuleExtractorEnum.TREERULE:
-        self.rule_extractor = TreeRuleExtractor(max_depth=200, 
+        )}
+      elif self.rule_extraction_method == RuleExtractorEnum.TREERULE:
+        self.rule_extractor = {RuleExtractorEnum.TREERULE :TreeRuleExtractor(max_depth=200, 
                                                 mode=self.mode,
                                                 features_names=self.features_names,
-                                                class_names = self.class_names)
-      elif self.rule_extractor == RuleExtractorEnum.MIXED:
+                                                class_names = self.class_names)}
+      elif self.rule_extraction_method == RuleExtractorEnum.MIXED:
         self.rule_extractor = {
-          "oneR": OneRuleExtractor(
+          RuleExtractorEnum.ONERULE: OneRuleExtractor(
             features_names=self.features_names,
             mode=self.mode
           ),
-          "treeR": TreeRuleExtractor(max_depth=200, 
+          RuleExtractorEnum.TREERULE: TreeRuleExtractor(max_depth=200, 
                                     mode=self.mode,
                                     features_names=self.features_names,
                                     class_names = self.class_names)
@@ -98,7 +108,9 @@ class DEXiRE:
                     X:np.array =None, 
                     y:np.array =None, 
                     layer_idx: int = -2, 
-                    sample=None) -> List[AbstractRuleSet]:
+                    sample=None, 
+                    quantize: bool = True,
+                    n_bins: int = 2) -> List[AbstractRuleSet]:
     """Extract rules from a deep neural network.
 
     :param X: Input features dataset, defaults to None
@@ -116,24 +128,57 @@ class DEXiRE:
     self.data_raw['output'] = y
 
     y_pred_raw = self.model.predict(X)
-    y_pred = np.rint(y_pred_raw)
-    classes, counts = np.unique(y_pred, return_counts=True)
-    self.majority_class = classes[np.argmax(counts)]
-    print(f"Number of classes: {classes}")
-    if self.intermediate_model is None:
-      self.intermediate_model = self.get_intermediate_model(layer_idx=layer_idx)
-    intermediate_output = self.intermediate_model.predict(X)
+    if self.mode == Mode.CLASSIFICATION:
+      pred_shape = y_pred_raw.shape[1]
+      if pred_shape == 1:
+        # binary classification 
+        y_pred = np.rint(y_pred_raw)
+      elif pred_shape > 1:
+        y_pred = np.argmax(y_pred_raw, axis=1)
+      else:
+        raise Exception(f"The prediction shape cannot be processed expected (batch, n), obtained: {y_pred_raw.shape}")
+      print(f"Unique predictions: {np.unique(y_pred)}")
+      classes, counts = np.unique(y_pred, return_counts=True)
+      self.majority_class = classes[np.argmax(counts)]
+    elif self.mode == Mode.REGRESSION:
+      y_pred = y_pred_raw
+      self.majority_class = np.mean(y_pred)
+    else:
+      raise Exception(f"Not implemented mode: {self.mode} if it is not Mode.CLASSIFICATION or Mode.REGRESSION.")
+    
+    if layer_idx not in self.intermediate_model.keys():
+      self.intermediate_model[layer_idx] = self.get_intermediate_model(layer_idx=layer_idx)
+    intermediate_output = self.intermediate_model[layer_idx].predict(X)
+    # quantize activations if it is required 
+    if quantize:
+      intermediate_output = discretize_activation_layer(intermediate_output, 
+                                                        n_bins=n_bins)
     x = intermediate_output
     y = y_pred
-    self.data_transformed['inputs'] = x
-    self.data_transformed['output'] = y
-    if sample is not None:
-      _, x, _,y = train_test_split(intermediate_output, y_pred, test_size=sample, stratify=y_pred)
-      print(f"sample shape: {x.shape} label sample: {y.shape}")
+    self.intermediate_model[layer_idx] = {'x': x, 'y': y}
+    if sample is not None and self.mode == Mode.CLASSIFICATION:
+      _, x, _,y = train_test_split(x, y, test_size=sample, stratify=y)
+    elif sample is not None and self.mode == Mode.REGRESSION:
+      _, x, _,y = train_test_split(x, y, test_size=sample)
     rules = []
-    rules = self.rule_extractor.extract_rules(x, y)
-    return rules
-
+    if self.rule_extraction_method == RuleExtractorEnum.ONERULE:
+      rules = self.rule_extractor[RuleExtractorEnum.ONERULE].extract_rules(x, y)
+    elif self.rule_extraction_method == RuleExtractorEnum.TREERULE:
+      rules = self.rule_extractor[RuleExtractorEnum.TREERULE].extract_rules(x, y)
+    elif self.rule_extraction_method == RuleExtractorEnum.MIXED:
+      rules = self.rule_extractor[RuleExtractorEnum.ONERULE].extract_rules(x, y)
+    # transform intermediate rule set into features expression
+    y_rule = rules.predict_numpy_rules(x, 
+                                       tie_breaker_strategy=self.tie_breaker_strategy)
+    # generate feature based rules 
+    if self.rule_extraction_method == RuleExtractorEnum.MIXED:
+      rules_features = self.rule_extractor[RuleExtractorEnum.TREERULE].extract_rules(X, y_rule)
+    elif self.rule_extraction_method == RuleExtractorEnum.ONERULE:
+      rules_features = self.rule_extractor[RuleExtractorEnum.ONERULE].extract_rules(X, y_rule)
+    else:
+      rules_features = self.rule_extractor[RuleExtractorEnum.TREERULE].extract_rules(X, y_rule)
+    self.intermediate_rules[layer_idx] = {'final_rules': rules, 'raw_rules': rules_features}
+    return rules_features
 
   def extract_rules(self, 
                     X: np.array, 
@@ -160,11 +205,21 @@ class DEXiRE:
         if isinstance(layers[layer_idx], tf.keras.layers.Dense):
           candidate_layers.append(layer_idx)
     else:
-      candidate_layers = layer_idx
+      candidate_layers = [layer_idx]
       #TODO: Check if the provide layer_idx matches the model architecture
     # extract rules from each layer 
-    rules = []
+    partial_rule_sets = []
     for layer_idx in candidate_layers:
-      print(f"Extracting rules from layer: {layer_idx}")
-      rules.append(self.extract_rules_at_layer(X=X, y=y, layer_idx=layer_idx, sample=sample, stratify=stratify))
-    return rules
+      # print(f"Extracting rules from layer: {layer_idx}")
+      partial_rule_sets.append(self.extract_rules_at_layer(X=X, y=y, layer_idx=layer_idx, sample=sample))
+    # total rules 
+    total_rules = []
+    for rs in partial_rule_sets:
+      total_rules += rs.get_rules()
+    print(f"total rules: {total_rules}")
+    # remove duplicate rules 
+    total_rules = list(set(total_rules))
+    frs = RuleSet()
+    frs.add_rules(total_rules)
+    self.final_rule_set = frs
+    return frs

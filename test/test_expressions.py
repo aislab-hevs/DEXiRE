@@ -28,8 +28,8 @@ def create_expression_greater_or_eq():
 
 def test_expression(create_expression):
     expr = create_expression
-    assert expr.get_feature_idx() == 0
-    assert expr.get_feature_name() == 'feature_0'
+    assert expr.get_feature_idx() == [0]
+    assert expr.get_feature_name() == ['feature_0']
     assert len(expr) == 1
     assert expr == Expr(0, 0, '==', 'feature_0')
     
@@ -85,7 +85,7 @@ def test_symbolic_expression_generation_greater_or_eq(create_expression_greater_
     symbolic_expr = expr.get_symbolic_expression()
     assert symbolic_expr is not None
     
-def test_numpy_eval(create_expression):
+def test_numpy_eval_equal(create_expression):
     expr = create_expression
     input_values = np.array([0.0, 1.0, -1.0])
     expected = np.array([True, False, False])
@@ -96,5 +96,33 @@ def test_numpy_eval_less_or_eq(create_expression_less_or_eq):
     expr = create_expression_less_or_eq
     input_values = np.array([2.678900, 2.0, 2.7])
     expected = np.array([True, True, False])
+    result = expr.numpy_eval(input_values)
+    assert (result == expected).all()
+    
+def test_numpy_eval_less_eval(create_expression_less):
+    expr = create_expression_less
+    input_values = np.array([0.13890, 0.13889, 0.13888])
+    expected = np.array([False, True, True])
+    result = expr.numpy_eval(input_values)
+    assert (result == expected).all()
+    
+def test_numpy_eval_greater_eval(create_expression_greater):
+    expr = create_expression_greater
+    input_values = np.array([-10.56789, -10.56787, -10.56786])
+    expected = np.array([False, True, True])
+    result = expr.numpy_eval(input_values)
+    assert (result == expected).all()
+    
+def test_numpy_eval_greater_or_eq_eval(create_expression_greater_or_eq):
+    expr = create_expression_greater_or_eq
+    input_values = np.array([189.0008765433, 189.0008765434, 189.0008765435])
+    expected = np.array([False, True, True])
+    result = expr.numpy_eval(input_values)
+    assert (result == expected).all()
+    
+def test_numpy_eval_with_different_shape(create_expression_greater_or_eq):
+    expr = create_expression_greater_or_eq
+    input_values = np.array([[189.0008765433], [189.0008765434], [189.0008765435]])
+    expected = np.array([False, True, True])
     result = expr.numpy_eval(input_values)
     assert (result == expected).all()

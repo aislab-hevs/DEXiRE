@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Tuple, Union, Callable, Set, Iterator
 from sympy import Symbol, Eq, Or, And, symbols, lambdify
 import sympy as symp
 import numpy as np
+from collections import OrderedDict
 
 from.expression import Expr
 from .dexire_abstract import AbstractClause
@@ -19,15 +20,58 @@ class ConjunctiveClause(AbstractClause):
     :type clauses: List[Union[Expr, AbstractClause]], optional
     """
     self.clauses = clauses
+    self.feature_name_to_idx = {}
+    self.update_feature_name_to_idx()
     self.symbolic_clause = None
+    self.indices = []
     self.lambda_func = None
+    self.symbols = []
+    self._create_symbolic_clause()
     
+  def update_feature_name_to_idx(self):
+    """
+    Update a dictionary between the features name and indices.
+    
+    :return: Not return value.
+    :rtype: None
+    """
+    temp_dict = {}
+    for clause in self.clauses:
+      if isinstance(clause, Expr):
+        temp_dict[clause.feature_name] = clause.feature_idx
+      else:
+        clause.update_feature_name_to_idx()
+        temp_dict = {**temp_dict, **clause.feature_name_to_idx}
+    sorted_items = sorted(temp_dict.items(), key=lambda x: x[1])
+    self.feature_name_to_idx = OrderedDict(sorted_items)
+    
+  def get_symbols(self):
+    """Obtain the symbols in this clause. 
+
+    :return: List of symbols in the clause
+    :rtype: List[symp.Symbol]
+    """
+    symbols = []
+    for clause in self.clauses:
+      if isinstance(clause, Expr):
+        symbols.extend(clause.get_symbols())
+      else:
+        symbols.extend(clause.get_symbols())
+    self.symbols = symbols
+    return self.symbols
+  
   def _create_symbolic_clause(self) -> None:
-    """_summary_
+    """Transform the clause into a symbolic expression. 
     """
     sym_list = [expr.get_symbolic_expression() for expr in self.clauses]
     self.symbolic_clause = And(*sym_list)
-    symbols_in_expr = list(self.symbolic_clause.free_symbols)
+    set_str_symbols = [str(s) for s in self.symbolic_clause.free_symbols]
+    symbols_in_expr = []
+    self.indices = []
+    for symbol_name in self.feature_name_to_idx.keys():
+      if symbol_name in set_str_symbols:
+        symbols_in_expr.append(Symbol(symbol_name))
+        self.indices.append(self.feature_name_to_idx[symbol_name])
     # lambdify expression
     self.lambda_func = lambdify(symbols_in_expr, self.symbolic_clause, 'numpy')
     
@@ -49,9 +93,21 @@ class ConjunctiveClause(AbstractClause):
     :return: _description_
     :rtype: bool
     """
-    if self.symbolic_clause is None or self.lambda_func is None:
+    if self.symbolic_clause is None or self.lambda_func is None or len(self.indices)==0:
       self._create_symbolic_clause()
-    return self.lambda_func(*X.T)
+    # filter the matrix 
+    if len(self.indices) == 0 or self.lambda_func is None:
+      self._create_symbolic_clause()
+    if X.ndim == 2:
+      x = X[:, self.indices]
+      result = np.apply_along_axis(lambda na: self.lambda_func(*na), 1, x)
+      return result
+    elif X.ndim == 1:
+      x = X[self.indices]
+      return self.lambda_func(*x)
+    else: 
+      raise ValueError(f"The input column shape {X.shape[1]} do not coincide with the expected: {len(self.indices)}")(f"The input shape {X.shape} do not coincide with the expected: {len(self.indices)}")
+    
 
   def eval(self, value: List[Any]) -> bool:
     """Evaluates the conjunctive clause given variable values, returning True if all clauses are True, False otherwise.
@@ -62,7 +118,6 @@ class ConjunctiveClause(AbstractClause):
     :rtype: bool
     """
     value_list = []
-    #print(value)
     for i in range(len(self.clauses)):
       value_list.append(self.clauses[i].eval(value[i]))
     return all(value_list)
@@ -74,6 +129,7 @@ class ConjunctiveClause(AbstractClause):
     :type clause: List[Expr]
     """
     self.clauses += clause
+    self.update_feature_name_to_idx()
     self._create_symbolic_clause()
 
   def get_feature_idx(self) -> List[int]:
@@ -82,7 +138,10 @@ class ConjunctiveClause(AbstractClause):
     :return: List of feature indexes used in this conjunctive clause.
     :rtype: List[int]
     """
-    return [expr.get_feature_idx() for expr in self.clauses]
+    index = []
+    for expr in self.clauses:
+      index += expr.get_feature_idx()
+    return index
 
   def get_feature_name(self) -> List[str]:
     """Get the feature names list used in this conjunctive clause.
@@ -90,7 +149,10 @@ class ConjunctiveClause(AbstractClause):
     :return: List of feature names used in this conjunctive clause.
     :rtype: List[str]
     """
-    return [expr.get_feature_name() for expr in self.clauses]
+    index = []
+    for expr in self.clauses:
+      index += expr.get_feature_name()
+    return index
 
   def __len__(self) -> int:
     """Get the number of features used in this conjunctive clause.
@@ -165,15 +227,60 @@ class DisjunctiveClause(AbstractClause):
     :type clauses: List[Union[Expr, AbstractClause]], optional
     """
     self.clauses = clauses
+    self.feature_name_to_idx = {}
+    self.update_feature_name_to_idx()
     self.symbolic_clause = None
     self.lambda_func = None
+    self.indices = []
+    self.symbols = []
+    self._create_symbolic_clause()
+    
+  def update_feature_name_to_idx(self):
+    """
+    Update a dictionary between the features name and indices.
+    
+    :return: Not return value.
+    :rtype: None
+    """
+    temp_dict = {}
+    for clause in self.clauses:
+      if isinstance(clause, Expr):
+        temp_dict[clause.feature_name] = clause.feature_idx
+      else:
+        clause.update_feature_name_to_idx()
+        temp_dict.update(clause.feature_name_to_idx)
+    sorted_items = sorted(temp_dict.items(), key=lambda x: x[1])
+    self.feature_name_to_idx = OrderedDict(sorted_items)
+    
+  def get_symbols(self):
+    """Obtain the symbols in this clause. 
+
+    :return: List of symbols in the clause
+    :rtype: List[symp.Symbol]
+    """
+    symbols = []
+    for clause in self.clauses:
+      if isinstance(clause, Expr):
+        symbols.extend(clause.get_symbols())
+      else:
+        symbols.extend(clause.get_symbols())
+    self.symbols = symbols
+    return self.symbols
     
   def _create_symbolic_clause(self) -> None:
     """_summary_
     """
     sym_list = [expr.get_symbolic_expression() for expr in self.clauses]
     self.symbolic_clause = Or(*sym_list)
-    symbols_in_expr = list(self.symbolic_clause.free_symbols)
+    set_str_symbols = [str(s) for s in self.symbolic_clause.free_symbols]
+    symbols_in_expr = []
+    self.indices = []
+    if len(self.feature_name_to_idx) == 0:
+      self.update_feature_name_to_idx()
+    for symbol_name in self.feature_name_to_idx.keys():
+      if symbol_name in set_str_symbols:
+        symbols_in_expr.append(Symbol(symbol_name))
+        self.indices.append(self.feature_name_to_idx[symbol_name])
     # lambdify expression
     self.lambda_func = lambdify(symbols_in_expr, self.symbolic_clause, 'numpy')
     
@@ -193,7 +300,10 @@ class DisjunctiveClause(AbstractClause):
     :return: List of feature indexes used in this disjunctive clause.
     :rtype: List[int]
     """
-    return [expr.get_feature_idx() for expr in self.clauses]
+    index = []
+    for expr in self.clauses:
+      index += expr.get_feature_idx()
+    return index
 
   def get_feature_name(self) -> List[str]:
     """Get the feature names list used in this disjunctive clause.
@@ -201,7 +311,10 @@ class DisjunctiveClause(AbstractClause):
     :return: List of feature names used in this disjunctive clause.
     :rtype: List[str]
     """
-    return [expr.get_feature_name() for expr in self.clauses]
+    index = []
+    for expr in self.clauses:
+      index += expr.get_feature_name()
+    return index
 
   def add_clauses(self, clause: List[Expr]) -> None:
     """Add a list of expressions to the disjunctive clause.
@@ -210,12 +323,22 @@ class DisjunctiveClause(AbstractClause):
     :type clause: List[Expr]
     """
     self.clauses += clause
+    self.update_feature_name_to_idx()
     self._create_symbolic_clause()
 
   def numpy_eval(self, X: np.array) -> bool:
-    if self.symbolic_clause is None or self.lambda_func is None:
+    if self.symbolic_clause is None or self.lambda_func is None or len(self.indices) == 0:
       self._create_symbolic_clause()
-    return self.lambda_func(*X.T)
+    if X.ndim == 2:
+      x = X[:, self.indices]
+      result = np.apply_along_axis(lambda na: self.lambda_func(*na), 1, x)
+      return result
+    elif X.ndim == 1:
+      x = X[self.indices]
+      return self.lambda_func(*x)
+    else: 
+      raise ValueError(f"The input column shape {X.shape[1]} do not coincide with the expected: {len(self.indices)}")(f"The input shape {X.shape} do not coincide with the expected: {len(self.indices)}")
+    
 
   def eval(self, value: List[Any]) -> bool:
     """Evaluates the disjunctive clause given variable values, returning True if any clause is True,

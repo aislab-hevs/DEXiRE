@@ -56,25 +56,7 @@ class Rule(AbstractRule):
       return None
     
   def predict(self, X: np.array) -> Any:
-    index_list = self.get_feature_idx()
-    if X.ndim == 1:
-      # check if match the premise symbols
-      if X.shape[0] == len(index_list):
-        return self.numpy_eval(X)
-      elif X.shape[0] > len(index_list):
-        return self.numpy_eval(X[index_list])
-      else: 
-        raise(f"The input shape {X.shape} do not coincide with the expected: {len(index_list)}")
-    elif X.ndim == 2:
-      #check if columns comply with symbols if more filter the columns
-      if X.shape[1] == len(index_list):
-        return self.numpy_eval(X)
-      elif X.shape[1] > len(index_list):
-        return self.numpy_eval(X[:, index_list])
-      else:
-        raise(f"The input column shape {X.shape[1]} do not coincide with the expected: {len(index_list)}")
-    else:
-      raise(f"Input cannot be with rank over 2, current rank: {X.dim}")
+    return self.numpy_eval(X)
     
   def numpy_eval(self, X: np.array) -> Any:
     boolean_prediction = self.premise.numpy_eval(X)

@@ -30,21 +30,25 @@ def create_diabetes_dataset():
 
 def test_one_rule_extractor(create_classification_binary_dataset):
     X, y = create_classification_binary_dataset
-    extractor = OneRuleExtractor(discretize=True)
+    extractor = OneRuleExtractor(discretize=True, 
+                                 max_iteration=200, 
+                                 mode=Mode.CLASSIFICATION)
     rule_set = extractor.extract_rules(X, y)
     assert isinstance(rule_set, RuleSet)
     assert len(rule_set) > 0
     
 def test_one_rule_extractor_iris(create_iris_dataset):
     X, y = create_iris_dataset
-    extractor = OneRuleExtractor(discretize=True)
+    extractor = OneRuleExtractor(discretize=True, 
+                                 max_iteration=200, 
+                                 mode=Mode.CLASSIFICATION)
     rule_set = extractor.extract_rules(X, y)
     assert isinstance(rule_set, RuleSet)
     assert len(rule_set) > 0
     
 def test_one_rule_extractor_regression(create_diabetes_dataset):
     X, y = create_diabetes_dataset
-    extractor = OneRuleExtractor(discretize=False,
+    extractor = OneRuleExtractor(discretize=True,
                                  mode=Mode.REGRESSION)
     rule_set = extractor.extract_rules(X, y)
     assert isinstance(rule_set, RuleSet)

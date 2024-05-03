@@ -89,7 +89,7 @@ def test_answer_preprocessor_hit_first(create_rule_set_with_four_rules):
         ])
     expected = np.array(['Class 3', 'Class 2', 'Class 3'])
     answer, decision_path = rule_set.answer_preprocessor(input_values, 
-                                 tiebreakerStrategy=TiebreakerStrategy.FIRST_HIT_RULE)
+                                 tie_breaker_strategy=TiebreakerStrategy.FIRST_HIT_RULE)
     assert (answer == expected).all()
     assert len(decision_path) == len(expected)
     
@@ -103,7 +103,7 @@ def test_answer_preprocessor_high_coverage(create_rule_set_with_four_rules):
         ])
     expected = np.array(['Class 3', 'Class 3', 'Class 1', 'Class 1'])
     answer, decision_path = rule_set.answer_preprocessor(input_values, 
-                                 tiebreakerStrategy=TiebreakerStrategy.HIGH_COVERAGE)
+                                 tie_breaker_strategy=TiebreakerStrategy.HIGH_COVERAGE)
     assert (answer == expected).all()
     assert len(decision_path) == len(expected)
     
@@ -116,7 +116,7 @@ def test_predict_numpy_rules(create_rule_set_with_four_rules):
     ])
     expected = np.array(['Class 1', 'Class 3', 'Class 3'])
     Y_hat = rule_set.predict_numpy_rules(X,
-                                         tiebreakerStrategy=TiebreakerStrategy.FIRST_HIT_RULE)
+                                         tie_breaker_strategy=TiebreakerStrategy.FIRST_HIT_RULE)
     print(Y_hat)
     assert (Y_hat == expected).all()
     

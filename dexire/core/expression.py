@@ -37,28 +37,39 @@ class Expr(AbstractExpr):
     self.str_template = "({feature} {operator} {threshold})"
     self.vec_eval = None
     self.lambda_func = None
+    if len(self.feature_name) == 0:
+        self.feature_name = f"feature_{self.feature_idx}"
+    self._create_symbolic_expression()
 
   def __generate_sympy_expr(self):
     #Generate the logic expression with sympy.
     try:
-      if self.symbolic_expression is None:
-        self.symbolic_expression = symp.parsing.sympy_parser.parse_expr(self.str_template.format(
-          feature=self.feature_name, 
-          operator=self.operator, 
-          threshold=self.threshold), evaluate=False)
+      if len(self.feature_name) == 0:
+        self.feature_name = f"feature_{self.feature_idx}"
+      symbolic_expression = symp.parsing.sympy_parser.parse_expr(self.str_template.format(
+        feature=self.feature_name, 
+        operator=self.operator, 
+        threshold=self.threshold), evaluate=False)
+      return symbolic_expression
     except Exception as e:
-      print(f"Error generating symbolic expression: {e}")
+      print(f"Exception generating symbolic expression: {e}")
+      raise e
       
   def _create_symbolic_expression(self) -> None:
-    self.__generate_sympy_expr()
-    symbols_in_expr = list(self.symbolic_expression.free_symbols)
-    # lambdify expression
-    self.lambda_func = lambdify(symbols_in_expr, self.symbolic_expression, 'numpy')
+    self.symbolic_expression = self.__generate_sympy_expr()
+    print(f"Symbolic expression: {self.symbolic_expression}")
+    if self.symbolic_expression is not None:
+      symbols_in_expr = list(self.symbolic_expression.free_symbols)
+      # lambdify expression
+      self.lambda_func = lambdify(symbols_in_expr, self.symbolic_expression, 'numpy')
   
   def numpy_eval(self, X: np.array) -> bool:
     if self.symbolic_expression is None or self.lambda_func is None:
       self._create_symbolic_expression()
-    return self.lambda_func(X)
+    if X.ndim == 1:
+      return self.lambda_func(X)
+    else:
+      return self.lambda_func(X.flatten())
   
   def get_symbolic_expression(self) -> symp.Expr:
     if self.symbolic_expression is None:
@@ -91,21 +102,21 @@ class Expr(AbstractExpr):
     else:
       raise Exception("Operator not recognized")
 
-  def get_feature_idx(self) -> int:
+  def get_feature_idx(self) -> List[int]:
     """Returns the feature index used in this logical expression.
 
     :return: numerical index of the feature used in this logical expression.
     :rtype: int
     """
-    return self.feature_idx
+    return [self.feature_idx]
 
-  def get_feature_name(self) -> str:
+  def get_feature_name(self) -> List[str]:
     """Returns the feature name used in this logical expression.
 
     :return: name of the feature used in this logical expression.
     :rtype: str
     """
-    return self.feature_name
+    return [self.feature_name]
 
   def __len__(self) -> int:
     """Returns the number of features used in this logical expression.
@@ -136,6 +147,16 @@ class Expr(AbstractExpr):
     return self.str_template.format(feature=self.feature_name,
                                     operator=self.operator,
                                     threshold=self.threshold)
+    
+  def get_symbols(self) -> List[symp.Symbol]:
+    """Return the symbols employed in the expression.
+
+    :return: List of symbols the expression 
+    :rtype: List[symp.Symbol]
+    """
+    if self.symbolic_expression is None:
+      self._create_symbolic_expression()
+    return list(self.symbolic_expression.free_symbols)
 
   def __eq__(self, other: object) -> bool:
     """Compares two logical expressions and return True if they are the same expression, False otherwise.
