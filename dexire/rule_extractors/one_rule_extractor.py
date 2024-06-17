@@ -113,7 +113,14 @@ class OneRuleExtractor(AbstractRuleExtractor):
       transformed_rules.append(transformed_rule)
     return transformed_rules
   
-  def process_complex_premises(self, premise):
+  def process_complex_premises(self, premise: Expr) -> Expr:
+    """Transform complex premises in to clauses.
+
+    :param premise: premise to be transformed.
+    :type premise: Expr
+    :return: Processed premise.
+    :rtype: Expr
+    """
     if isinstance(premise, Expr):
         return self.inverse_digitalize_exp(premise,
                                           self.bins_dict[premise.feature_idx])

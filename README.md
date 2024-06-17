@@ -28,7 +28,7 @@ To install DEXiRE, follow these steps:
 Windows, Linux and macOS:
 
 ```
-python -m pip install --upgrade setuptools
+python -m pip install --upgrade setuptools wheel twine
 ```
 
 In the root directory DEXIRE execute the following command with the active environment  activated:
@@ -116,8 +116,7 @@ Thanks to the following people who have contributed to this project:
 
 ## Acknowledge  
 
-To acknowledge the contributions of dEXiRE or cite the original paper use the following bibtex:
-
+To acknowledge the contributions of DEXiRE or cite the original paper use the following bibtex:
 
 ```
 @article{contreras2022dexire,
@@ -131,6 +130,8 @@ To acknowledge the contributions of dEXiRE or cite the original paper use the fo
   publisher={MDPI}
 }
 ```
+
+This work is supported by the Chist-Era grant CHIST-ERA19-XAI-005, and by the Swiss National Science Foundation (G.A. 20CH21\_195530).
 
 ## Contact
 

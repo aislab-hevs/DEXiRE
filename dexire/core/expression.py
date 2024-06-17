@@ -17,15 +17,15 @@ class Expr(AbstractExpr):
                operator: Union[str, Callable],
                feature_name: str = ""
                ) -> None:
-    """_summary_
+    """Constructor function for creating a new expression.
 
-    :param feature_idx: _description_
+    :param feature_idx: feature index within feature matrix. 
     :type feature_idx: int
-    :param threshold: _description_
+    :param threshold: Value to compare the expression against.
     :type threshold: Any
-    :param operator: _description_
+    :param operator: Operator to compare the expression against the threshold
     :type operator: Union[str, Callable]
-    :param feature_name: _description_, defaults to ""
+    :param feature_name: feature's name, defaults to ""
     :type feature_name: str, optional
     """
     super(Expr, self).__init__()
@@ -41,7 +41,13 @@ class Expr(AbstractExpr):
         self.feature_name = f"feature_{self.feature_idx}"
     self._create_symbolic_expression()
 
-  def __generate_sympy_expr(self):
+  def __generate_sympy_expr(self) -> symp.Expr:
+    """Generates a symbolic expression for this expression.
+
+    :raises e: Error in processing the expression.
+    :return: Symbolic expression
+    :rtype: symp.Expr
+    """
     #Generate the logic expression with sympy.
     try:
       if len(self.feature_name) == 0:
@@ -56,6 +62,8 @@ class Expr(AbstractExpr):
       raise e
       
   def _create_symbolic_expression(self) -> None:
+    """Create a lambify expression from symbolic expression.
+    """
     self.symbolic_expression = self.__generate_sympy_expr()
     print(f"Symbolic expression: {self.symbolic_expression}")
     if self.symbolic_expression is not None:
@@ -64,6 +72,13 @@ class Expr(AbstractExpr):
       self.lambda_func = lambdify(symbols_in_expr, self.symbolic_expression, 'numpy')
   
   def numpy_eval(self, X: np.array) -> bool:
+    """Eval this expression using a numpy array. 
+
+    :param X: Numpy array with values to replace in the expression. 
+    :type X: np.array
+    :return: Boolean value indicating if the expression is evaluate to True or False.
+    :rtype: bool
+    """
     if self.symbolic_expression is None or self.lambda_func is None:
       self._create_symbolic_expression()
     if X.ndim == 1:
@@ -72,6 +87,11 @@ class Expr(AbstractExpr):
       return self.lambda_func(X.flatten())
   
   def get_symbolic_expression(self) -> symp.Expr:
+    """Returns the symbolic expression of this expression.
+
+    :return: Symbolic expression of this expression.
+    :rtype: symp.Expr
+    """
     if self.symbolic_expression is None:
       self._create_symbolic_expression()
     return self.symbolic_expression

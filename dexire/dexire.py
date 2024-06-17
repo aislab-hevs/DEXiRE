@@ -24,6 +24,7 @@ class DEXiRE:
                class_names: List[str]=None,
                rule_extractor: Union[None, AbstractRuleExtractor] = None,
                mode: Mode = Mode.CLASSIFICATION,
+               explain_features: np.array = None,
                rule_extraction_method: RuleExtractorEnum = RuleExtractorEnum.TREERULE,
                tie_breaker_strategy: TiebreakerStrategy = TiebreakerStrategy.FIRST_HIT_RULE ) -> None:
     """Constructor method to set up the DEXiRE pipeline.
@@ -36,6 +37,7 @@ class DEXiRE:
     :type class_names: List[str], optional
     """
     self.model = model
+    self.explain_features = explain_features
     self.mode = mode
     self.rule_extraction_method = rule_extraction_method
     self.tie_breaker_strategy = tie_breaker_strategy
@@ -110,7 +112,8 @@ class DEXiRE:
                     layer_idx: int = -2, 
                     sample=None, 
                     quantize: bool = True,
-                    n_bins: int = 2) -> List[AbstractRuleSet]:
+                    n_bins: int = 2,
+                    express_as_basic_features: bool = True) -> List[AbstractRuleSet]:
     """Extract rules from a deep neural network.
 
     :param X: Input features dataset, defaults to None
@@ -171,6 +174,23 @@ class DEXiRE:
     y_rule = rules.predict_numpy_rules(x, 
                                        tie_breaker_strategy=self.tie_breaker_strategy)
     # generate feature based rules 
+    if express_as_basic_features:
+      if self.explain_features is not None:
+        X = self.explain_features
+      # use given features to generate rules 
+      if self.rule_extraction_method == RuleExtractorEnum.MIXED:
+        rules_features = self.rule_extractor[RuleExtractorEnum.TREERULE].extract_rules(X, y_rule)
+      elif self.rule_extraction_method == RuleExtractorEnum.ONERULE:
+        rules_features = self.rule_extractor[RuleExtractorEnum.ONERULE].extract_rules(X, y_rule)
+      else:
+        rules_features = self.rule_extractor[RuleExtractorEnum.TREERULE].extract_rules(X, y_rule)
+      self.intermediate_rules[layer_idx] = {'final_rules': rules, 'raw_rules': rules_features}
+      return rules_features
+    else:
+      rules_features = self.rule_extractor[RuleExtractorEnum.ONERULE].extract_rules(X, y_rule)
+    self.intermediate_rules[layer_idx] = {'final_rules': rules, 'raw_rules': rules_features}
+    return rules_features
+
     if self.rule_extraction_method == RuleExtractorEnum.MIXED:
       rules_features = self.rule_extractor[RuleExtractorEnum.TREERULE].extract_rules(X, y_rule)
     elif self.rule_extraction_method == RuleExtractorEnum.ONERULE:
@@ -184,8 +204,24 @@ class DEXiRE:
                     X: np.array, 
                     y: np.array, 
                     sample: float = None, 
-                    stratify: bool = False,
-                    layer_idx: List[int]= None):
+                    layer_idx: List[int]= None) -> AbstractRuleSet:
+    """Extract the rule set to explain the full model.
+
+    :param X: Input features array
+    :type X: np.array
+    :param y: predicted values
+    :type y: np.array
+    :param sample: If not None percentage to sample from the training set, defaults to None
+    :type sample: float, optional
+    :param layer_idx: list of layers to consider into the rule extraction, defaults to None
+    :type layer_idx: List[int], optional
+    :raises Exception: The model is not Sequential of Functional Tensorflow model.
+    :raises Exception: Layer index is not a list of valid numerical indexes.
+    :raises Exception: Layer index is out of bounds of the model layer list.
+    :raises Exception: Layer index is out of bounds of the model layer list.
+    :return: Rule set with model global explanations.
+    :rtype: AbstractRuleSet
+    """
     # check model instance 
     model_type = None 
     if isinstance(self.model, tf.keras.Sequential):
@@ -205,8 +241,20 @@ class DEXiRE:
         if isinstance(layers[layer_idx], tf.keras.layers.Dense):
           candidate_layers.append(layer_idx)
     else:
-      candidate_layers = [layer_idx]
-      #TODO: Check if the provide layer_idx matches the model architecture
+      if isinstance(layer_idx, list):
+        candidate_layers = layer_idx
+      elif isinstance(layer_idx, int):
+        candidate_layers = [layer_idx]
+      else:
+        raise Exception(f"layer_idx must be a list of integers or a single integer.")
+      model_layers = self.model.layers
+      for idx in candidate_layers:
+        if idx >= 0:
+          if idx >= len(model_layers)-1:
+            raise Exception(f"Index: {idx} is out of bounds of the model")
+        elif idx < 0:
+          if idx < -len(model_layers):
+            raise Exception(f"Index: {idx} is out of bounds of the model")
     # extract rules from each layer 
     partial_rule_sets = []
     for layer_idx in candidate_layers:

@@ -5,8 +5,7 @@ import sys
 import numpy as np
 from sklearn.datasets import load_iris, make_classification, make_regression
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from dexire.utils.probabilistic_ranking import probabilistic_ranking, entropy, information_gain
+from dexire.utils.probabilistic_ranking import probabilistic_ranking, entropy, information_gain, calculate_information_gain_per_feature
 from dexire.utils.activation_discretizer import discretize_activation_layer
 
 @pytest.fixture
@@ -59,8 +58,7 @@ def test_probabilistic_ranking(generate_binary_data):
     # Binarize 
     X_bin = discretize_activation_layer(X, n_bins=2)
     # Ranking
-    dict_values = {}
-    for i in range(X_bin.shape[1]):
-        dict_values[i] = probabilistic_ranking(X_bin[:, i])
-    
-    pass
+    dict_values = calculate_information_gain_per_feature(X_bin, y)
+    ranking = probabilistic_ranking(dict_values, key='ig')
+    #print(ranking)
+    assert len(ranking) == X_bin.shape[1]

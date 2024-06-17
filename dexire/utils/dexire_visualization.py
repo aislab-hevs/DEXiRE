@@ -1,8 +1,22 @@
 import graphviz as gp
+import tensorflow as tf
+from typing import Dict, List, Optional, Tuple, Any
 from .probabilistic_ranking import probabilistic_ranking
-#TODO: Adjust to the new methods
 
-def generate_nn_path_graph(model, act_path, format='pdf'):
+def generate_nn_path_graph(model: tf.keras.Model, 
+                           act_path: Dict[Any], 
+                           format: str='pdf') -> gp.Digraph:
+    """Generate visualization of the activation path in the neurons.
+
+    :param model: Model to explain the activations.
+    :type model: tf.keras.Model
+    :param act_path: Dictionary with the activation path and a metric per layer.
+    :type act_path: Dict[Any]
+    :param format: Output format, defaults to 'pdf'
+    :type format: str, optional
+    :return: Graphviz object with the activation path in the model.
+    :rtype: gp.Digraph
+    """
     layers = model.layers
     out_layer_idx = len(layers) - 1
     layer_nodes = {}
@@ -17,6 +31,8 @@ def generate_nn_path_graph(model, act_path, format='pdf'):
     # create subgraphs
     preffix = ''
     for idx, layer in enumerate(layers):
+        # Check if the idx layer is on the activation path
+        if idx not in act_path.keys(): continue
         important_nodes[idx] = []
         if idx == 0:
             preffix = 'x'

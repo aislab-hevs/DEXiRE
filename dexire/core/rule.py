@@ -16,19 +16,19 @@ class Rule(AbstractRule):
                accuracy: float = 0.0,
                proba: float = 0.0,
                print_stats: bool = False) -> None:
-    """_summary_
+    """Constructor to create a new rule.
 
-    :param premise: _description_
+    :param premise: The clause expression of the premise for this rule.
     :type premise: AbstractExpr
-    :param conclusion: _description_
+    :param conclusion: Conclusion of the rule.
     :type conclusion: Any
-    :param coverage: _description_, defaults to 0.0
+    :param coverage: coverage percentage, defaults to 0.0
     :type coverage: float, optional
-    :param accuracy: _description_, defaults to 0.0
+    :param accuracy: rule's accuracy , defaults to 0.0
     :type accuracy: float, optional
-    :param proba: _description_, defaults to 0.0
+    :param proba: rule probability, defaults to 0.0
     :type proba: float, optional
-    :param print_stats: _description_, defaults to False
+    :param print_stats: boolean value, True to print rule's statistics, defaults to False
     :type print_stats: bool, optional
     """
     self.premise = premise
@@ -41,11 +41,11 @@ class Rule(AbstractRule):
     self.print_stats = print_stats
 
   def __eval(self, value: Any) -> Any:
-    """_summary_
+    """Evaluate the rule 
 
-    :param value: _description_
+    :param value: Rule's inputs
     :type value: Any
-    :return: _description_
+    :return: Conclusion if the premise is True, None otherwise.
     :rtype: Any
     """
     if self.premise.eval(value):
@@ -56,60 +56,74 @@ class Rule(AbstractRule):
       return None
     
   def predict(self, X: np.array) -> Any:
+    """Predicts a conclusion based on the input features in X.
+
+    :param X: Numpy array that match the number of feature and order in the rule premise.
+    :type X: np.array
+    :return: Array of conclusions or Nones
+    :rtype: Any
+    """
     return self.numpy_eval(X)
     
   def numpy_eval(self, X: np.array) -> Any:
+    """Eval the rule using a numpy array.
+
+    :param X: numpy array that match the features in the rule's premise.
+    :type X: np.array
+    :return: Conclusion if the premise is True, None otherwise.
+    :rtype: Any
+    """
     boolean_prediction = self.premise.numpy_eval(X)
     answer = np.full(boolean_prediction.shape, None)
     answer[boolean_prediction] = self.conclusion
     return answer
 
   def eval(self, value: Any) -> Any:
-    """_summary_
+    """Eval the rule given a set of feature values.
 
-    :param value: _description_
+    :param value: set of features that match rule's inputs.
     :type value: Any
-    :return: _description_
+    :return: Conclusion if the premise is satisfied, None otherwise.
     :rtype: Any
     """
     return self.__eval(value)
 
   def get_feature_idx(self) -> List[int]:
-    """_summary_
+    """Get the feature indexes that compound this rule.
 
-    :return: _description_
+    :return: Return the list of feature index for this rule.
     :rtype: List[int]
     """
     return self.premise.get_feature_idx()
 
   def get_feature_name(self) -> List[str]:
-    """_summary_
+    """Get the list of features names that compound the rule's premise.
 
-    :return: _description_
+    :return: List of features names that compound the premise of the rule.
     :rtype: List[str]
     """
     return self.premise.get_feature_name()
 
   def __len__(self) -> int:
-    """_summary_
+    """Return the terms length in the rule.
 
-    :return: _description_
+    :return: Rule's length.
     :rtype: int
     """
     return len(self.premise)
 
   def __repr__(self) -> str:
-    """_summary_
+    """Rule's string representation.
 
-    :return: _description_
+    :return: Return string representation of the rule.
     :rtype: str
     """
     return self.__str__()
 
   def __str__(self) -> str:
-    """_summary_
+    """String representation of the rule.
 
-    :return: _description_
+    :return: Rule's string representation.
     :rtype: str
     """
     if self.print_stats:
@@ -117,11 +131,11 @@ class Rule(AbstractRule):
     return f"IF {self.premise} THEN {self.conclusion}"
 
   def __eq__(self, other: object) -> bool:
-    """_summary_
+    """Compare two rules.
 
-    :param other: _description_
+    :param other: Other rule to compare with. 
     :type other: object
-    :return: _description_
+    :return: Boolean indicating  whether the rules are equal (True) or not (False).
     :rtype: bool
     """
     equality = False
@@ -131,9 +145,9 @@ class Rule(AbstractRule):
     return equality
 
   def __hash__(self) -> int:
-    """_summary_
+    """Hash function for the rule. 
 
-    :return: _description_
+    :return: hash representation of the rule. 
     :rtype: int
     """
     return hash(repr(self))

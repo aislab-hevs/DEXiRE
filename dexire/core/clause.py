@@ -76,9 +76,9 @@ class ConjunctiveClause(AbstractClause):
     self.lambda_func = lambdify(symbols_in_expr, self.symbolic_clause, 'numpy')
     
   def get_symbolic_clause(self) -> symp.Expr:
-    """_summary_
+    """Get symbolic expression from clause.
 
-    :return: _description_
+    :return: Clause symbolic expression
     :rtype: symp.Expr
     """
     if self.symbolic_clause is None:
@@ -86,11 +86,11 @@ class ConjunctiveClause(AbstractClause):
     return self.symbolic_clause
   
   def numpy_eval(self, X: np.array) -> bool:
-    """_summary_
+    """Eval the clause expression as a numpy expression.
 
-    :param X: _description_
+    :param X: Numpy array with the input data.
     :type X: np.array
-    :return: _description_
+    :return: Boolean value indicating if the clause is True or False given X. 
     :rtype: bool
     """
     if self.symbolic_clause is None or self.lambda_func is None or len(self.indices)==0:
@@ -268,7 +268,7 @@ class DisjunctiveClause(AbstractClause):
     return self.symbols
     
   def _create_symbolic_clause(self) -> None:
-    """_summary_
+    """Generate the symbolic expression for this clause.
     """
     sym_list = [expr.get_symbolic_expression() for expr in self.clauses]
     self.symbolic_clause = Or(*sym_list)
@@ -285,10 +285,10 @@ class DisjunctiveClause(AbstractClause):
     self.lambda_func = lambdify(symbols_in_expr, self.symbolic_clause, 'numpy')
     
   def get_symbolic_clause(self) -> symp.Expr:
-    """_summary_
+    """Return symbolic expression for this clause.
 
-    Returns:
-        symp.Expr: _description_
+    :return: SymPY expression
+    :rtype: sympy.Expr
     """
     if self.symbolic_clause is None:
       self._create_symbolic_clause()
@@ -327,6 +327,14 @@ class DisjunctiveClause(AbstractClause):
     self._create_symbolic_clause()
 
   def numpy_eval(self, X: np.array) -> bool:
+    """Eval the expression using the array X.
+
+    :param X: Input data for the clause.
+    :type X: np.array
+    :raises ValueError: The number of features in X does not match the expect input data.
+    :return: Boolean expression indicating if the clause is True or False given X.
+    :rtype: bool
+    """
     if self.symbolic_clause is None or self.lambda_func is None or len(self.indices) == 0:
       self._create_symbolic_clause()
     if X.ndim == 2:

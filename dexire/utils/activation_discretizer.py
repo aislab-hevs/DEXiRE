@@ -34,6 +34,18 @@ def digitalize_row(
 def discretize_activation_layer(X: np.array,
                                 bins: List[Any] = None,
                                 n_bins: int = 2) -> np.array:
+    """Discretize the activation layer with numpy.
+
+    :param X: Activations matrix to be discretized.
+    :type X: np.array
+    :param bins: List of bins to discretize, defaults to None
+    :type bins: List[Any], optional
+    :param n_bins: number of bins to discretize data, defaults to 2
+    :type n_bins: int, optional
+    :raises Exception: The X array has incorrect shape.
+    :return: Discretized activation layer.
+    :rtype: np.array
+    """
     if X.ndim == 2:
         axis_application = np.apply_along_axis(digitalize_row, 
                                                axis=0, 
