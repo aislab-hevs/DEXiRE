@@ -1,5 +1,8 @@
 from typing import Any, Callable, Union, List, Dict
 import numpy as np
+import dill
+dill.settings['recurse'] = True
+
 from sklearn.metrics import (mean_absolute_error, 
                              mean_squared_error, 
                              r2_score,
@@ -356,3 +359,21 @@ class RuleSet(AbstractRuleSet):
       if isinstance(other, self.__class__):
         equality = set(self.rules) == set(other.rules)
       return equality
+    
+  def save(self, filename: str) -> None:
+    """Save the current rule set to a binary file with extension (.pkl).
+
+    :param filename: Relative or absolute path to the binary file should end with ".pkl" extension.
+    :type filename: str
+    """
+    with open(filename, mode='wb') as fp:
+      dill.dump(self, filename)
+      
+  def load(self, filename: str) -> None:
+    """Load a rule set from a file. 
+
+    :param filename: Relative or absolute file path to the binary file should end with ".pkl" extension.
+    :type filename: str
+    """
+    with open(filename, mode='rb') as fp:
+      self = dill.load(fp)

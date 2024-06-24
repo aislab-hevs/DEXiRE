@@ -13,7 +13,8 @@ REQUIREMENTS = [
 'pytest==8.1.1',
 'matplotlib==3.8.3',
 'seaborn==0.13.2',
-'graphviz==0.20.3'
+'graphviz==0.20.3',
+'dill==0.3.8'
 ]
 
 # Some details 

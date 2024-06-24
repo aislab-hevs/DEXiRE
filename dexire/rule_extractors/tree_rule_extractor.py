@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Tuple, Union, Callable, Set
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn import tree
 from sklearn.tree import _tree
+from sklearn.utils.validation import  check_is_fitted
 
 from ..core.dexire_abstract import Mode, AbstractRuleExtractor, AbstractRuleSet
 from ..core.expression import Expr
@@ -20,7 +21,6 @@ class TreeRuleExtractor(AbstractRuleExtractor):
                max_depth: int = 10,
                mode: Mode = Mode.CLASSIFICATION,
                criterion: str = 'gini',
-               features_names: List[str] = None,
                class_names: List[str] = None,
                min_samples_split: float = 0.1) -> None:
     """Constructor for TreeRuleExtractor.
@@ -31,8 +31,6 @@ class TreeRuleExtractor(AbstractRuleExtractor):
     :type mode: Mode, optional
     :param criterion: Criterion to split the tree, defaults to 'gini'
     :type criterion: str, optional
-    :param features_names: List of feature names, defaults to None
-    :type features_names: List[str], optional
     :param class_names: List of class names, defaults to None
     :type class_names: List[str], optional
     :param min_samples_split: Min percentage of samples to split the tree, defaults to 0.1
@@ -43,7 +41,6 @@ class TreeRuleExtractor(AbstractRuleExtractor):
     self.model = None
     self.max_depth = max_depth
     self.criterion = criterion
-    self.feature_names = features_names
     self.class_names = class_names
     self.majority_class = None
     if self.mode == Mode.CLASSIFICATION:
@@ -54,20 +51,24 @@ class TreeRuleExtractor(AbstractRuleExtractor):
     else:
       raise Exception(f"Mode {self.mode} not implemented")
 
-  def get_rules(self) -> Union[AbstractRuleSet, Set[AbstractRuleSet], List[AbstractRuleSet], None]:
+  def get_rules(self, feature_names: List[str]) -> Union[AbstractRuleSet, Set[AbstractRuleSet], List[AbstractRuleSet], None]:
     """Get the rules from the tree model.
-
+    
+    :param feature_names: List of feature names.
+    :type feature_names: List[str]
     :raises Exception: The model has not been defined! model: None
     :return: extracted rule set.
     :rtype: Union[AbstractRuleSet, Set[AbstractRuleSet], List[AbstractRuleSet], None]
     """
     if self.model is not None:
+      # Check if the model is fitted
+      check_is_fitted(self.model)
       tree_ = self.model.tree_
     else:
       raise Exception("The model has not been defined! model: None")
     # feature naming
     feature_name = [
-        self.feature_names[i] if i != _tree.TREE_UNDEFINED else "undefined!"
+        feature_names[i] if i != _tree.TREE_UNDEFINED else None
         for i in tree_.feature
     ]
 
@@ -141,14 +142,16 @@ class TreeRuleExtractor(AbstractRuleExtractor):
     """
     return self.model
 
-  def extract_rules(self, X: Any, y: Any) -> Union[AbstractRuleSet, Set[AbstractRuleSet], List[AbstractRuleSet], None]:
+  def extract_rules(self, X: Any, y: Any, feature_names: str = None) -> Union[AbstractRuleSet, Set[AbstractRuleSet], List[AbstractRuleSet], None]:
     """Train the tree model and extract rules from the dataset (X, y).
 
     :param X: Input features dataset.
     :type X: Any
     :param y: Labels for dataset X.
     :type y: Any
+    :param feature_names: List of feature names, defaults to None.
     :raises Exception: No model. If the tree model has not been defined.
+    :raises Exception: The feature list size is different to the number of columns.
     :return: Extracted rule set.
     :rtype: Union[AbstractRuleSet, Set[AbstractRuleSet], List[AbstractRuleSet], None]
     """
@@ -156,9 +159,13 @@ class TreeRuleExtractor(AbstractRuleExtractor):
       # train the model
       self.model.fit(X, y)
       # extract rules
-      if self.feature_names is None:
-        self.feature_names = [f"feature_{i}" for i in range(X.shape[1])]
-      rules = self.get_rules()
+      if feature_names is None:
+        feature_names = [f"feature_{i}" for i in range(X.shape[1])]
+      else:
+        # Check features size
+        if len(feature_names)!= X.shape[1]:
+          raise Exception(f"feature_names size {len(feature_names)}!= X.shape[1] {X.shape[1]}")
+      rules = self.get_rules(feature_names=feature_names)
       return rules
     else:
       raise Exception("No model")

@@ -16,7 +16,6 @@ class OneRuleExtractor(AbstractRuleExtractor):
   """
 
   def __init__(self, 
-               features_names:List[str]=None,
                majority_class:Any=None,
                discretize:bool=False,
                columns_to_discretize:List[int]=None,
@@ -48,7 +47,6 @@ class OneRuleExtractor(AbstractRuleExtractor):
     :type minimum_accuracy: float, optional
     """
     self.rules = []
-    self.features_names = features_names
     self.majority_class = majority_class
     self.mode = mode
     self.multi_class_acc_threshold = multi_class_acc_threshold
@@ -257,7 +255,9 @@ class OneRuleExtractor(AbstractRuleExtractor):
   def oneR(self, 
            X: np.array, 
            y: np.array, 
-           col_dim:int =1) -> Tuple[Rule, np.ndarray]:
+           col_dim:int =1,
+           feature_names: List[str]=None
+           ) -> Tuple[Rule, np.ndarray]:
     """Extract one rule from the dataset (X, y).
 
     :param X: Input feature dataset.
@@ -273,6 +273,8 @@ class OneRuleExtractor(AbstractRuleExtractor):
     best_rule = None
     best_covered_indices = None
     rule_error = np.inf
+    # iterate over unique values of the column
+    print(f"unique: {len(np.unique(X[:, col_dim]))}")
     for i in range(X.shape[col_dim]):
       temp_x = X[:, i]
       unique_values = np.unique(temp_x)
@@ -290,10 +292,11 @@ class OneRuleExtractor(AbstractRuleExtractor):
         # check if the rule is better
         if error <= rule_error:
           # create rule
-          if self.features_names is not None:
-            predicate = Expr(self.features_names[i],
-                            val, '==',
-                            self.features_names[i])
+          if feature_names is not None:
+            predicate = Expr(feature_idx=i,
+                             threshold=val, 
+                             operator='==',
+                            feature_name=feature_names[i])
           else:
             predicate = Expr(i, val, '==')
           best_rule = Rule(predicate, conclusion, accuracy, coverage)
@@ -304,7 +307,7 @@ class OneRuleExtractor(AbstractRuleExtractor):
       
 
   # remove covered examples
-  def sequential_covering_oneR(self, X: np.array, y: np.array) -> None:
+  def sequential_covering_oneR(self, X: np.array, y: np.array, feature_names: List[str] = None) -> None:
     """Iterates over the dataset and extracts rules.
 
     :param X: Input features dataset.
@@ -315,7 +318,7 @@ class OneRuleExtractor(AbstractRuleExtractor):
     accuracy = np.inf
     coverage = np.inf
     iterations = 0
-    # check_multiclass case 
+    # check_multi-class case 
     multi_class_flag = False
     if self.mode == Mode.CLASSIFICATION:
       multi_class_flag = len(np.unique(y)) > 2
@@ -324,14 +327,14 @@ class OneRuleExtractor(AbstractRuleExtractor):
       coverage >= self.minimum_coverage and\
       iterations < self.max_iterations:
       print(f"--------- Iter = {iterations}-----------")
-      rule, covered_indices = self.oneR(X, y)
+      rule, covered_indices = self.oneR(X, y, feature_names=feature_names)
       self.rules.append(rule)
       accuracy = rule.accuracy
       coverage = rule.coverage
       X, y = self.remove_covered_examples(X, y, covered_indices)
       iterations += 1
 
-  def extract_rules(self, X: Any, y: Any) -> Union[AbstractRuleSet, Set[AbstractRuleSet], List[AbstractRuleSet], None]:
+  def extract_rules(self, X: Any, y: Any, feature_names:List[str]=None) -> Union[AbstractRuleSet, Set[AbstractRuleSet], List[AbstractRuleSet], None]:
     """Extract rules from the dataset (X, y).
 
     :param X: Input features dataset.
@@ -343,10 +346,17 @@ class OneRuleExtractor(AbstractRuleExtractor):
     """
     self.X = X
     self.y = y
+    # check feature names 
+    if feature_names is not None:
+      if len(feature_names) != X.shape[1]:
+        raise ValueError("The number of feature names must be equal\
+          to the number of feature columns")
+    else:
+      feature_names = [f"feature_{i}" for i in range(X.shape[1])]
     rs = RuleSet()
     X_new, y_new = self.preprocessing_data(X, y)
     print(f"X: {X_new}")
-    self.sequential_covering_oneR(X_new, y_new)
+    self.sequential_covering_oneR(X_new, y_new, feature_names=feature_names)
     self.rules = self.post_processing_rules()
     rs.add_rules(self.rules)
     return rs

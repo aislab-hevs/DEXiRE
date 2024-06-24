@@ -106,6 +106,10 @@ To contribute to DEXiRE, follow these steps:
 
 Alternatively see the GitHub documentation on [creating a pull request](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request).
 
+## project manager
+
+Thanks to the project manager [Davide Calvaresi]{mailto:davide.calvaresi@hevs.ch}, who support the development of this project.
+
 ## Contributors
 
 Thanks to the following people who have contributed to this project:

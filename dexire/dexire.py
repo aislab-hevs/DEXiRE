@@ -58,23 +58,19 @@ class DEXiRE:
         raise Exception(f"Rule extractor: {self.rule_extraction_method} not implemented.")
       elif self.rule_extraction_method == RuleExtractorEnum.ONERULE:
         self.rule_extractor = {RuleExtractorEnum.ONERULE :OneRuleExtractor(
-          features_names=self.features_names,
           mode=self.mode
         )}
       elif self.rule_extraction_method == RuleExtractorEnum.TREERULE:
         self.rule_extractor = {RuleExtractorEnum.TREERULE :TreeRuleExtractor(max_depth=200, 
                                                 mode=self.mode,
-                                                features_names=self.features_names,
                                                 class_names = self.class_names)}
       elif self.rule_extraction_method == RuleExtractorEnum.MIXED:
         self.rule_extractor = {
           RuleExtractorEnum.ONERULE: OneRuleExtractor(
-            features_names=self.features_names,
             mode=self.mode
           ),
           RuleExtractorEnum.TREERULE: TreeRuleExtractor(max_depth=200, 
                                     mode=self.mode,
-                                    features_names=self.features_names,
                                     class_names = self.class_names)
         }
 
@@ -110,10 +106,11 @@ class DEXiRE:
                     X:np.array =None, 
                     y:np.array =None, 
                     layer_idx: int = -2, 
-                    sample=None, 
+                    sample: float=None, 
                     quantize: bool = True,
                     n_bins: int = 2,
-                    express_as_basic_features: bool = True) -> List[AbstractRuleSet]:
+                    express_as_basic_features: bool = True, 
+                    random_state: int = 41) -> List[AbstractRuleSet]:
     """Extract rules from a deep neural network.
 
     :param X: Input features dataset, defaults to None
@@ -124,13 +121,24 @@ class DEXiRE:
     :type layer_idx: int, optional
     :param sample: sample percentage to extract rules from if None all examples will be used, defaults to None
     :type sample: _type_, optional
+    :param quantize: Quantize activations, defaults to True
+    :type quantize: bool, optional
+    :param n_bins: Number of bins to discretize activations, defaults to 2
+    :type n_bins: int, optional
+    :param express_as_basic_features: Express the current rule as basic features, defaults to True
+    :type express_as_basic_features: bool, optional.
     :return: Rule set extracted from the deep neural network.
     :rtype: List[AbstractRuleSet]
     """
     self.data_raw['inputs'] = X
     self.data_raw['output'] = y
-
-    y_pred_raw = self.model.predict(X)
+    # retrieve prediction 
+    if "raw_prediction" in self.data_raw.keys():
+      y_pred_raw = self.data_raw['raw_prediction']
+    else: 
+      y_pred_raw = self.model.predict(X)
+      self.data_raw['raw_prediction'] = y_pred_raw
+    # Transform the predictions
     if self.mode == Mode.CLASSIFICATION:
       pred_shape = y_pred_raw.shape[1]
       if pred_shape == 1:
@@ -156,13 +164,16 @@ class DEXiRE:
     if quantize:
       intermediate_output = discretize_activation_layer(intermediate_output, 
                                                         n_bins=n_bins)
+    # Intermediate data 
     x = intermediate_output
     y = y_pred
-    self.intermediate_model[layer_idx] = {'x': x, 'y': y}
+    # sample data if the dataset es big
     if sample is not None and self.mode == Mode.CLASSIFICATION:
-      _, x, _,y = train_test_split(x, y, test_size=sample, stratify=y)
+      _, x, _,y = train_test_split(x, y, test_size=sample, stratify=y, 
+                                   random_state=random_state)
     elif sample is not None and self.mode == Mode.REGRESSION:
-      _, x, _,y = train_test_split(x, y, test_size=sample)
+      _, x, _,y = train_test_split(x, y, test_size=sample, 
+                                   random_state=random_state)
     rules = []
     if self.rule_extraction_method == RuleExtractorEnum.ONERULE:
       rules = self.rule_extractor[RuleExtractorEnum.ONERULE].extract_rules(x, y)
@@ -176,27 +187,33 @@ class DEXiRE:
     # generate feature based rules 
     if express_as_basic_features:
       if self.explain_features is not None:
-        X = self.explain_features
+        X_xai = self.explain_features
+      else:
+        X_xai = X
+      # check feature name with xai_features 
+      if self.features_names is not None:
+        if len(self.features_names) != X_xai.shape[1]:
+          raise ValueError(f"The feature names list length do not coincide with XAI features columns. \
+            Expected values {X_xai.shape[1]}, provided: {len(self.features_names)}.")
+      else:
+        self.features_names = [f"X_{i}" for i in range(X_xai.shape[1])]
       # use given features to generate rules 
       if self.rule_extraction_method == RuleExtractorEnum.MIXED:
-        rules_features = self.rule_extractor[RuleExtractorEnum.TREERULE].extract_rules(X, y_rule)
+        rules_features = self.rule_extractor[RuleExtractorEnum.TREERULE].extract_rules(X_xai, 
+                                                                                       y_rule,
+                                                                                       feature_names=self.features_names)
       elif self.rule_extraction_method == RuleExtractorEnum.ONERULE:
-        rules_features = self.rule_extractor[RuleExtractorEnum.ONERULE].extract_rules(X, y_rule)
+        rules_features = self.rule_extractor[RuleExtractorEnum.ONERULE].extract_rules(X_xai, 
+                                                                                      y_rule, 
+                                                                                      feature_names=self.features_names)
       else:
-        rules_features = self.rule_extractor[RuleExtractorEnum.TREERULE].extract_rules(X, y_rule)
+        rules_features = self.rule_extractor[RuleExtractorEnum.TREERULE].extract_rules(X_xai, 
+                                                                                       y_rule,
+                                                                                       feature_names=self.features_names)
       self.intermediate_rules[layer_idx] = {'final_rules': rules, 'raw_rules': rules_features}
       return rules_features
     else:
-      rules_features = self.rule_extractor[RuleExtractorEnum.ONERULE].extract_rules(X, y_rule)
-    self.intermediate_rules[layer_idx] = {'final_rules': rules, 'raw_rules': rules_features}
-    return rules_features
-
-    if self.rule_extraction_method == RuleExtractorEnum.MIXED:
-      rules_features = self.rule_extractor[RuleExtractorEnum.TREERULE].extract_rules(X, y_rule)
-    elif self.rule_extraction_method == RuleExtractorEnum.ONERULE:
-      rules_features = self.rule_extractor[RuleExtractorEnum.ONERULE].extract_rules(X, y_rule)
-    else:
-      rules_features = self.rule_extractor[RuleExtractorEnum.TREERULE].extract_rules(X, y_rule)
+      rules_features = self.rule_extractor[RuleExtractorEnum.ONERULE].extract_rules(X_xai, y_rule)
     self.intermediate_rules[layer_idx] = {'final_rules': rules, 'raw_rules': rules_features}
     return rules_features
 
