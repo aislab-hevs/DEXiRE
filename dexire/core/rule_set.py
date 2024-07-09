@@ -367,7 +367,7 @@ class RuleSet(AbstractRuleSet):
     :type filename: str
     """
     with open(filename, mode='wb') as fp:
-      dill.dump(self, filename)
+      dill.dump(self, fp)
       
   def load(self, filename: str) -> None:
     """Load a rule set from a file. 
