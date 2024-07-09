@@ -108,7 +108,7 @@ Alternatively see the GitHub documentation on [creating a pull request](https://
 
 ## project manager
 
-Thanks to the project manager [Davide Calvaresi]{mailto:davide.calvaresi@hevs.ch}, who support the development of this project.
+Thanks to the project manager [Davide Calvaresi](mailto:davide.calvaresi@hevs.ch), who support the development of this project.
 
 ## Contributors
 

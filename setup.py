@@ -7,12 +7,12 @@ with open("README.md", "r") as fh:
 REQUIREMENTS = [
 'numpy==1.26.4',
 'tensorflow==2.15.0',
-'pandas==2.2.1',
+'pandas==1.5.3',
 'scikit-learn==1.4.1.post1',
 'sympy==1.12',
 'pytest==8.1.1',
 'matplotlib==3.8.3',
-'seaborn==0.13.2',
+'seaborn',
 'graphviz==0.20.3',
 'dill==0.3.8'
 ]
