@@ -47,7 +47,7 @@ class AbstractRule(ABC):
   """
 
   @abstractmethod
-  def eval(value: Any)-> Union[Any, None]:
+  def eval(self, value: Any)-> Union[Any, None]:
     """Evaluates the rule returning the conclusion if the rule evaluates to True. 
     Return None if the rule evaluates to False.
 
@@ -63,7 +63,20 @@ class AbstractRuleSet(ABC):
   :param ABC: Abstract class base definition.
   :type ABC: ABC abstract class. 
   """
-  pass
+  @abstractmethod
+  def get_rules(self) -> List[AbstractRule]:
+    """Return the rules associated with this rule set."""
+    pass
+
+  @abstractmethod
+  def add_rules(self, rule: List[AbstractRule]) -> None:
+    """Add a list of rules to the rule set."""
+    pass
+
+  @abstractmethod
+  def predict(self, X: Any, return_decision_path: bool = False, tie_breaker_strategy: Any = None) -> Any:
+    """Predict outcomes for one row or a matrix of rows."""
+    pass
 
 class AbstractRuleExtractor(ABC):
   """Abstract class for extracting rule sets from data and models.

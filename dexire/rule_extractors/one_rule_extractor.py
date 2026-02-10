@@ -6,6 +6,7 @@ from ..core.expression import Expr
 from ..core.rule import Rule
 from ..core.rule_set import RuleSet
 from ..core.clause import ConjunctiveClause, DisjunctiveClause
+from ..utils.probabilistic_ranking import rank_features_by_information_gain
 
 
 class OneRuleExtractor(AbstractRuleExtractor):
@@ -52,8 +53,6 @@ class OneRuleExtractor(AbstractRuleExtractor):
     self.multi_class_acc_threshold = multi_class_acc_threshold
     self.regression_resolution_quantization = regression_resolution_quantization
     self.regression_bins = None
-    self.X = None
-    self.y = None
     self.bins_dict = {}
     self.discretize = discretize
     self.columns_to_discretize = columns_to_discretize
@@ -77,7 +76,7 @@ class OneRuleExtractor(AbstractRuleExtractor):
           x[:, col_idx] = digitalized_column
           self.bins_dict[col_idx] = bins
       else:
-        for col_idx in range(self.X.shape[1]):
+        for col_idx in range(x.shape[1]):
           digitalized_column, bins = self.digitalize_column(x, 
                                                             col_idx, 
                                                             n_bins=self.feature_quantization_resolution)
@@ -87,7 +86,7 @@ class OneRuleExtractor(AbstractRuleExtractor):
     if self.mode == Mode.REGRESSION:
       y_final = y.reshape(-1, 1)
       if self.regression_resolution_quantization <= 2:
-        raise Exception("The regression_resolution_quantization must be greater than 2.")
+        raise ValueError("The regression_resolution_quantization must be greater than 2.")
       # transform the regression input 
       y_final, self.regression_bins = self.digitalize_column(y_final, 
                                                             col_idx=0, 
@@ -166,14 +165,14 @@ class OneRuleExtractor(AbstractRuleExtractor):
     return self.rules
 
   def digitalize_column(self, 
-                        X: np.array, 
+                        X: np.ndarray, 
                         col_idx: int, 
                         bins:List[Any]=None, 
                         n_bins:int=10) -> Tuple[np.ndarray, List[Any]]:
     """Digitalize one column of the input array.
 
     :param X: Numpy array with the input features.
-    :type X: np.array
+    :type X: np.ndarray
     :param col_idx: Column to be discretized in X. 
     :type col_idx: int
     :param bins: List of bins to discretized column identified by col_idx, defaults to None
@@ -219,8 +218,6 @@ class OneRuleExtractor(AbstractRuleExtractor):
     :rtype: ConjunctiveClause
     """
     int_threshold = int(digitalize_expr.threshold)-1
-    print(f"int t: {int_threshold}")
-    print(f"bins: {bins}")
     lower = bins[int_threshold-1]
     higher = bins[int_threshold]
     expr1 = Expr(digitalize_expr.feature_idx,
@@ -234,15 +231,15 @@ class OneRuleExtractor(AbstractRuleExtractor):
     return ConjunctiveClause([expr1, expr2])
 
   def remove_covered_examples(self, 
-                              X: np.array, 
-                              y: np.array, 
+                              X: np.ndarray, 
+                              y: np.ndarray, 
                               covered_indices: List[int]) -> Tuple[np.ndarray, np.ndarray]:
     """Removes the covered examples from the dataset.
 
     :param X: Input features dataset.
-    :type X: np.array
+    :type X: np.ndarray
     :param y: labels for dataset X.
-    :type y: np.array
+    :type y: np.ndarray
     :param covered_indices: List of covered indices for the current rule.
     :type covered_indices: List[int]
     :return: Dataset without covered examples. 
@@ -253,17 +250,17 @@ class OneRuleExtractor(AbstractRuleExtractor):
     return X[mask], y[mask]
 
   def oneR(self, 
-           X: np.array, 
-           y: np.array, 
+           X: np.ndarray, 
+           y: np.ndarray, 
            col_dim:int =1,
            feature_names: List[str]=None
            ) -> Tuple[Rule, np.ndarray]:
     """Extract one rule from the dataset (X, y).
 
     :param X: Input feature dataset.
-    :type X: np.array
+    :type X: np.ndarray
     :param y: Labels for dataset X.
-    :type y: np.array
+    :type y: np.ndarray
     :param col_dim: Dimension to get column index , defaults to 1
     :type col_dim: int, optional
     :return: The learned rule and indices of the covered examples.
@@ -273,12 +270,11 @@ class OneRuleExtractor(AbstractRuleExtractor):
     best_rule = None
     best_covered_indices = None
     rule_error = np.inf
+    feature_candidates = rank_features_by_information_gain(X, y)
     # iterate over unique values of the column
-    print(f"unique: {len(np.unique(X[:, col_dim]))}")
-    for i in range(X.shape[col_dim]):
+    for i in feature_candidates:
       temp_x = X[:, i]
       unique_values = np.unique(temp_x)
-      print(f"unique: {len(unique_values)}")
       for val in unique_values:
         condition_idx = np.where(temp_x == val)[0]
         labels, counts = np.unique(y[condition_idx], return_counts=True)
@@ -302,18 +298,22 @@ class OneRuleExtractor(AbstractRuleExtractor):
           best_rule = Rule(predicate, conclusion, accuracy, coverage)
           best_covered_indices = condition_idx
           rule_error = error
+          if rule_error == 0:
+            break
+      if rule_error == 0:
+        break
     # check if the rule is better
     return best_rule, best_covered_indices
       
 
   # remove covered examples
-  def sequential_covering_oneR(self, X: np.array, y: np.array, feature_names: List[str] = None) -> None:
+  def sequential_covering_oneR(self, X: np.ndarray, y: np.ndarray, feature_names: List[str] = None) -> None:
     """Iterates over the dataset and extracts rules.
 
     :param X: Input features dataset.
-    :type X: np.array
+    :type X: np.ndarray
     :param y: Labels for dataset X.
-    :type y: np.array
+    :type y: np.ndarray
     """
     accuracy = np.inf
     coverage = np.inf
@@ -326,7 +326,6 @@ class OneRuleExtractor(AbstractRuleExtractor):
       accuracy >= self.minimum_accuracy and\
       coverage >= self.minimum_coverage and\
       iterations < self.max_iterations:
-      print(f"--------- Iter = {iterations}-----------")
       rule, covered_indices = self.oneR(X, y, feature_names=feature_names)
       self.rules.append(rule)
       accuracy = rule.accuracy
@@ -338,14 +337,14 @@ class OneRuleExtractor(AbstractRuleExtractor):
     """Extract rules from the dataset (X, y).
 
     :param X: Input features dataset.
-    :type X: np.array
+    :type X: np.ndarray
     :param y: Labels for dataset X.
-    :type y: np.array
+    :type y: np.ndarray
     :return: Learned rule set. 
     :rtype: Union[AbstractRuleSet, Set[AbstractRuleSet], List[AbstractRuleSet], None]
     """
-    self.X = X
-    self.y = y
+    self.rules = []
+    self.bins_dict = {}
     # check feature names 
     if feature_names is not None:
       if len(feature_names) != X.shape[1]:
@@ -355,7 +354,6 @@ class OneRuleExtractor(AbstractRuleExtractor):
       feature_names = [f"feature_{i}" for i in range(X.shape[1])]
     rs = RuleSet()
     X_new, y_new = self.preprocessing_data(X, y)
-    print(f"X: {X_new}")
     self.sequential_covering_oneR(X_new, y_new, feature_names=feature_names)
     self.rules = self.post_processing_rules()
     rs.add_rules(self.rules)

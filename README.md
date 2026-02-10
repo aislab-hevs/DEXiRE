@@ -18,7 +18,7 @@ Before you begin, ensure you have met the following requirements:
 <!--- These are just example requirements. Add, duplicate or remove as required --->
 
 - You have a `<Windows/Linux/Mac>` machine. State which OS is supported/which is not.
-- You have installed version of `python 3.9`.
+- You have installed `python 3.11` or `python 3.12`.
 - It is recommended to create an environment with conda or venv to isolate the execution and avoid version conflict.
 
 ## Installing DEXiRE
@@ -64,7 +64,7 @@ py -m build
 The wheel installer will be appear in the dist subdirectory. Localize in the dist subdirectory execute the following command:
 
 ```
-pip install dexire-0.0.1-py3-none-any.whl
+pip install dexire-0.1-py3-none-any.whl
 ```
 
 The wheel installer (.whl file) cna be distributed to install in other environments.

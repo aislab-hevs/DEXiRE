@@ -55,27 +55,30 @@ class Rule(AbstractRule):
       self.activated = False
       return None
     
-  def predict(self, X: np.array) -> Any:
+  def predict(self, X: np.ndarray, return_mask: bool = False) -> Any:
     """Predicts a conclusion based on the input features in X.
 
     :param X: Numpy array that match the number of feature and order in the rule premise.
-    :type X: np.array
+    :type X: np.ndarray
     :return: Array of conclusions or Nones
     :rtype: Any
     """
-    return self.numpy_eval(X)
+    return self.numpy_eval(X, return_mask=return_mask)
     
-  def numpy_eval(self, X: np.array) -> Any:
+  def numpy_eval(self, X: np.ndarray, return_mask: bool = False) -> Any:
     """Eval the rule using a numpy array.
 
     :param X: numpy array that match the features in the rule's premise.
-    :type X: np.array
+    :type X: np.ndarray
     :return: Conclusion if the premise is True, None otherwise.
     :rtype: Any
     """
-    boolean_prediction = self.premise.numpy_eval(X)
-    answer = np.full(boolean_prediction.shape, None)
+    boolean_prediction = np.asarray(self.premise.numpy_eval(X), dtype=bool)
+    answer = np.empty(boolean_prediction.shape, dtype=object)
+    answer[:] = None
     answer[boolean_prediction] = self.conclusion
+    if return_mask:
+      return answer, boolean_prediction
     return answer
 
   def eval(self, value: Any) -> Any:

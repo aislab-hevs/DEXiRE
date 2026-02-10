@@ -2,7 +2,6 @@ import numpy as np
 from typing import Any, Dict, List, Tuple, Union, Callable, Set
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn import tree
-from sklearn.tree import _tree
 from sklearn.utils.validation import  check_is_fitted
 
 from ..core.dexire_abstract import Mode, AbstractRuleExtractor, AbstractRuleSet
@@ -10,6 +9,8 @@ from ..core.expression import Expr
 from ..core.rule import Rule
 from ..core.rule_set import RuleSet
 from ..core.clause import ConjunctiveClause, DisjunctiveClause
+
+TREE_UNDEFINED = -2
 
 class TreeRuleExtractor(AbstractRuleExtractor):
   """Extract rules based on a decision tree.
@@ -49,7 +50,30 @@ class TreeRuleExtractor(AbstractRuleExtractor):
     elif self.mode == Mode.REGRESSION:
       self.model = DecisionTreeRegressor(max_depth=self.max_depth, criterion=self.criterion)
     else:
-      raise Exception(f"Mode {self.mode} not implemented")
+      raise NotImplementedError(f"Mode {self.mode} not implemented")
+
+  def _resolve_class_conclusion(self, class_index: int) -> Any:
+    """Resolve the class conclusion label from a class index.
+
+    The decision tree stores class counts according to ``model.classes_`` order.
+    Relying only on ``class_names`` positional indexing may invert labels when the
+    fitted class order differs from the provided name order.
+    """
+    if self.model is None:
+      raise ValueError("The model has not been defined! model: None")
+    if not hasattr(self.model, "classes_"):
+      raise ValueError("The model has not been fitted yet and has no classes_.")
+    model_classes = self.model.classes_
+    predicted_label = model_classes[class_index]
+    # If class_names are provided and classes are numeric indexes, map by index.
+    # Otherwise, keep the fitted class label to avoid semantic inversion.
+    if self.class_names is not None:
+      if isinstance(predicted_label, (int, np.integer)):
+        if 0 <= int(predicted_label) < len(self.class_names):
+          return self.class_names[int(predicted_label)]
+      if predicted_label in self.class_names:
+        return predicted_label
+    return predicted_label
 
   def get_rules(self, feature_names: List[str]) -> Union[AbstractRuleSet, Set[AbstractRuleSet], List[AbstractRuleSet], None]:
     """Get the rules from the tree model.
@@ -65,10 +89,10 @@ class TreeRuleExtractor(AbstractRuleExtractor):
       check_is_fitted(self.model)
       tree_ = self.model.tree_
     else:
-      raise Exception("The model has not been defined! model: None")
+      raise ValueError("The model has not been defined! model: None")
     # feature naming
     feature_name = [
-        feature_names[i] if i != _tree.TREE_UNDEFINED else None
+        feature_names[i] if i != TREE_UNDEFINED else None
         for i in tree_.feature
     ]
 
@@ -76,10 +100,8 @@ class TreeRuleExtractor(AbstractRuleExtractor):
     path = []
 
     def recurse(node, path, paths):
-      if tree_.feature[node] != _tree.TREE_UNDEFINED:
-        print(tree_.feature[node])
+      if tree_.feature[node] != TREE_UNDEFINED:
         name = feature_name[node]
-        print(name)
         feature_index = tree_.feature[node]
         threshold = tree_.threshold[node]
         p1, p2 = list(path), list(path)
@@ -112,18 +134,13 @@ class TreeRuleExtractor(AbstractRuleExtractor):
         conclusion = str(np.round(path[-1][0][0][0],3))
         proba = None
       elif self.mode == Mode.CLASSIFICATION:
-        if self.class_names is None:
-          conclusion = str(np.round(path[-1][0][0][0],3))
-          classes = path[-1][0][0]
-        else:
-          # there is class names
-          classes = path[-1][0][0]
-          l = np.argmax(classes)
-          conclusion = self.class_names[l]
+        classes = path[-1][0][0]
+        l = int(np.argmax(classes))
+        conclusion = self._resolve_class_conclusion(class_index=l)
         # calculate accuracy probability and coverage of the rule
         proba = np.round(100.0*classes[l]/np.sum(classes),2)
       else: 
-        raise Exception(f"Mode {self.mode} not implemented")
+        raise NotImplementedError(f"Mode {self.mode} not implemented")
       coverage = path[-1][1]
       # create the rule
       rule = Rule(premise=rule_premise,
@@ -164,8 +181,8 @@ class TreeRuleExtractor(AbstractRuleExtractor):
       else:
         # Check features size
         if len(feature_names)!= X.shape[1]:
-          raise Exception(f"feature_names size {len(feature_names)}!= X.shape[1] {X.shape[1]}")
+          raise ValueError(f"feature_names size {len(feature_names)}!= X.shape[1] {X.shape[1]}")
       rules = self.get_rules(feature_names=feature_names)
       return rules
     else:
-      raise Exception("No model")
+      raise ValueError("No model")

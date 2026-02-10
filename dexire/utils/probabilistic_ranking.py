@@ -15,11 +15,11 @@ def probabilistic_ranking(dict_path_layer: Dict[Any, Any], key: str ='support') 
     sort_out = sorted(dict_path_layer.items(), key=lambda item: item[1][key], reverse=True)
     return sort_out
 
-def entropy(labels:np.array) -> float:
+def entropy(labels: np.ndarray) -> float:
     """Calculate entropy of a list of labels.
 
     :param labels: Label array.
-    :type labels: np.array
+    :type labels: np.ndarray
     :return: Entropy of label distribution.
     :rtype: float
     """
@@ -28,13 +28,13 @@ def entropy(labels:np.array) -> float:
     probabilities = counts[np.nonzero(counts)] / n
     return -np.sum(probabilities * np.log2(probabilities))
 
-def information_gain(parent_labels: np.array, children_labels:np.array) -> float:
+def information_gain(parent_labels: np.ndarray, children_labels: np.ndarray) -> float:
     """Calculate information gain.
 
     :param parent_labels: labels before splitting.
-    :type parent_labels: np.array
+    :type parent_labels: np.ndarray
     :param children_labels: List of label splits.
-    :type children_labels: np.array
+    :type children_labels: np.ndarray
     :return: Information gain for the given split
     :rtype: float
     """
@@ -42,13 +42,13 @@ def information_gain(parent_labels: np.array, children_labels:np.array) -> float
     children_entropy = sum((len(child) / len(parent_labels)) * entropy(child) for child in children_labels)
     return parent_entropy - children_entropy
 
-def calculate_information_gain_per_feature(X: np.array, y: np.array) -> Dict[int, Dict[Any, Any]]:
+def calculate_information_gain_per_feature(X: np.ndarray, y: np.ndarray) -> Dict[int, Dict[Any, Any]]:
     """Calculates the information gain per feature split.
 
     :param X: matrix features values
-    :type X: np.array
+    :type X: np.ndarray
     :param y: labels before splitting
-    :type y: np.array
+    :type y: np.ndarray
     :return: Information gain per split in this feature.
     :rtype: Dict[int, Dict[Any, Any]]
     """
@@ -66,3 +66,30 @@ def calculate_information_gain_per_feature(X: np.array, y: np.array) -> Dict[int
             ig = information_gain(y, [y_left, y_right])
             dict_answer[feature_idx].update({'value': val, 'ig': ig})
     return dict_answer
+
+
+def rank_features_by_information_gain(X: np.ndarray, y: np.ndarray) -> List[int]:
+    """Rank features by their best single-value information gain split.
+
+    :param X: matrix feature values
+    :type X: np.ndarray
+    :param y: labels
+    :type y: np.ndarray
+    :return: feature indices sorted by descending score
+    :rtype: List[int]
+    """
+    feature_scores: Dict[int, float] = {}
+    for feature_idx in range(X.shape[1]):
+        unique_values = np.unique(X[:, feature_idx])
+        best_feature_ig = -np.inf
+        for val in unique_values:
+            left_indices = X[:, feature_idx] == val
+            right_indices = X[:, feature_idx] != val
+            y_left = y[left_indices]
+            y_right = y[right_indices]
+            ig = information_gain(y, [y_left, y_right])
+            if ig > best_feature_ig:
+                best_feature_ig = ig
+        feature_scores[feature_idx] = best_feature_ig
+    ranked = sorted(feature_scores.items(), key=lambda item: item[1], reverse=True)
+    return [idx for idx, _ in ranked]

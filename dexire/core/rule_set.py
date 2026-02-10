@@ -81,12 +81,13 @@ class RuleSet(AbstractRuleSet):
       
       
   def answer_preprocessor(self, 
-                 Y_hat: np.array, 
+                 Y_hat: np.ndarray, 
+                 activation_mask: np.ndarray = None,
                  tie_breaker_strategy: TiebreakerStrategy = TiebreakerStrategy.FIRST_HIT_RULE) -> Any:
     """Process the predictions to display ordered to the final user.
 
     :param Y_hat: current predictions.
-    :type Y_hat: np.array
+    :type Y_hat: np.ndarray
     :param tie_breaker_strategy: Strategy to break ties between predictions, defaults to TiebreakerStrategy.FIRST_HIT_RULE
     :type tie_breaker_strategy: TiebreakerStrategy, optional
     :raises ValueError: Tie breaker strategy is not supported.
@@ -95,79 +96,58 @@ class RuleSet(AbstractRuleSet):
     """
     final_answer = []
     decision_path = []
-    if tie_breaker_strategy not in TiebreakerStrategy:
+    rules_array = np.array(self.rules, dtype=object)
+    if not isinstance(tie_breaker_strategy, TiebreakerStrategy):
       raise ValueError(f"Tie breaker strategy {tie_breaker_strategy} is not in the tie breaker enumeration")
-    if tie_breaker_strategy == TiebreakerStrategy.MAJORITY_CLASS:
-      for i in range(Y_hat.shape[0]):
-        mask = Y_hat[i, :] != None
-        if np.sum(mask) == 0:
-          final_answer.append(self.defaultRule())
-          decision_path.append(["default_rule"])
-        else:
-          classes, counts = np.unique(Y_hat[i, mask], return_counts=True)
-          max_class = classes[np.argmax(counts)]
-          final_answer.append(max_class)
-          rule_mask = Y_hat[i, :] == max_class
-          decision_path.append(list(np.array(self.rules)[rule_mask]))
-    elif tie_breaker_strategy == TiebreakerStrategy.MINORITE_CLASS:
-        for i in range(Y_hat.shape[0]):
-          mask = Y_hat[i, :] != None
-          if np.sum(mask) == 0:
-            final_answer.append(self.defaultRule())
-            decision_path.append(["default_rule"])
-          else:
-            classes, counts = np.unique(Y_hat[i, mask], return_counts=True)
-            min_class = classes[np.argmin(counts)]
-            final_answer.append(min_class)
-            rule_mask = Y_hat[i, :] == min_class
-            decision_path.append(list(np.array(self.rules)[rule_mask]))
-    elif tie_breaker_strategy == TiebreakerStrategy.HIGH_PERFORMANCE:
-        for i in range(Y_hat.shape[0]):
-          mask = Y_hat[i, :] != None
-          if np.sum(mask) == 0:
-            final_answer.append(self.defaultRule())
-            decision_path.append(["default_rule"])
-          else:
-            filtered_rules = list(np.array(self.rules)[mask])
-            accuracy = [rule.accuracy for rule in filtered_rules]
-            max_accuracy_index = np.argmax(accuracy)
-            final_answer.append(filtered_rules[max_accuracy_index].conclusion)
-            decision_path.append([filtered_rules[max_accuracy_index]])
-    elif tie_breaker_strategy == TiebreakerStrategy.HIGH_COVERAGE:
-        for i in range(Y_hat.shape[0]):
-          mask = Y_hat[i, :] != None
-          if np.sum(mask) == 0:
-            final_answer.append(self.defaultRule())
-            decision_path.append(["default_rule"])
-          else:
-            filtered_rules = list(np.array(self.rules)[mask])
-            coverage = [rule.coverage for rule in filtered_rules]
-            max_coverage_index = np.argmax(coverage)
-            final_answer.append(filtered_rules[max_coverage_index].conclusion)
-            decision_path.append([filtered_rules[max_coverage_index]])
-    elif tie_breaker_strategy == TiebreakerStrategy.FIRST_HIT_RULE:
-      for i in range(Y_hat.shape[0]):
-        mask = Y_hat[i, :] != None
-        if np.sum(mask) == 0:
-          final_answer.append(self.defaultRule())
-          decision_path.append(["default_rule"])
-        else:
-          for j in range(Y_hat.shape[1]):
-            if Y_hat[i, j]!= None:
-              final_answer.append(Y_hat[i, j])
-              decision_path.append([self.rules[j]])
-              break
+    if activation_mask is None:
+      activation_mask = Y_hat != None
+    for i in range(Y_hat.shape[0]):
+      row_mask = activation_mask[i, :]
+      if np.sum(row_mask) == 0:
+        final_answer.append(self.defaultRule())
+        decision_path.append(["default_rule"])
+        continue
+      active_predictions = Y_hat[i, row_mask]
+      active_rules = list(rules_array[row_mask])
+      if tie_breaker_strategy == TiebreakerStrategy.MAJORITY_CLASS:
+        classes, counts = np.unique(active_predictions, return_counts=True)
+        selected = classes[np.argmax(counts)]
+        final_answer.append(selected)
+        rule_mask = row_mask & (Y_hat[i, :] == selected)
+        decision_path.append(list(rules_array[rule_mask]))
+      elif tie_breaker_strategy == TiebreakerStrategy.MINORITE_CLASS:
+        classes, counts = np.unique(active_predictions, return_counts=True)
+        selected = classes[np.argmin(counts)]
+        final_answer.append(selected)
+        rule_mask = row_mask & (Y_hat[i, :] == selected)
+        decision_path.append(list(rules_array[rule_mask]))
+      elif tie_breaker_strategy == TiebreakerStrategy.HIGH_PERFORMANCE:
+        accuracies = [rule.accuracy for rule in active_rules]
+        best_idx = int(np.argmax(accuracies))
+        final_answer.append(active_rules[best_idx].conclusion)
+        decision_path.append([active_rules[best_idx]])
+      elif tie_breaker_strategy == TiebreakerStrategy.HIGH_COVERAGE:
+        coverages = [rule.coverage for rule in active_rules]
+        best_idx = int(np.argmax(coverages))
+        final_answer.append(active_rules[best_idx].conclusion)
+        decision_path.append([active_rules[best_idx]])
+      elif tie_breaker_strategy == TiebreakerStrategy.FIRST_HIT_RULE:
+        first_hit_idx = int(np.argmax(row_mask))
+        final_answer.append(Y_hat[i, first_hit_idx])
+        decision_path.append([self.rules[first_hit_idx]])
+      else:
+        raise ValueError(f"Tie breaker strategy {tie_breaker_strategy} is not supported.")
     return np.array(final_answer), decision_path
   
   
   def predict_numpy_rules(self, 
-                          X: np.array, 
+                          X: np.ndarray, 
                           tie_breaker_strategy: TiebreakerStrategy = TiebreakerStrategy.FIRST_HIT_RULE,
                           return_decision_path: bool = False) -> Any:
     """Generates predictions based on the complete feature numpy array.
 
     :param X: Complete feature array to be evaluated.
-    :type X: np.array
+    :type X: np.ndarray
     :param tie_breaker_strategy: Strategy to break ties between rules, defaults to TiebreakerStrategy.FIRST_HIT_RULE
     :type tie_breaker_strategy: TiebreakerStrategy, optional
     :param return_decision_path: Boolean value to return the decision path lead to decision, defaults to False
@@ -175,11 +155,25 @@ class RuleSet(AbstractRuleSet):
     :return: Set of prediction one per row in the feature matrix X.
     :rtype: Any
     """
-    # fast inference using numpy 
-    partial_answer = [rule.predict(X) for rule in self.rules]
-    Y_hat = np.array(partial_answer)
-    final_decision, decision_path = self.answer_preprocessor(Y_hat.T, 
-                                                             tie_breaker_strategy)
+    if len(self.rules) == 0:
+      default_prediction = np.full(X.shape[0], self.defaultRule(), dtype=object)
+      default_path = [["default_rule"] for _ in range(X.shape[0])]
+      if return_decision_path:
+        return default_prediction, default_path
+      return default_prediction
+    partial_answer = []
+    activation_mask = []
+    for rule in self.rules:
+      pred, mask = rule.predict(X, return_mask=True)
+      partial_answer.append(pred)
+      activation_mask.append(mask)
+    Y_hat = np.array(partial_answer, dtype=object).T
+    activation_mask = np.array(activation_mask, dtype=bool).T
+    final_decision, decision_path = self.answer_preprocessor(
+      Y_hat,
+      activation_mask=activation_mask,
+      tie_breaker_strategy=tie_breaker_strategy
+    )
     if not return_decision_path:
       return final_decision
     else:
@@ -208,41 +202,43 @@ class RuleSet(AbstractRuleSet):
       elif temp_val.shape[0] > 1:
         res = rule.eval(temp_val)
       else:
-        raise(f"Not elements selected, indexes = {col_index}, data + {data_row}")
+        raise ValueError(f"No elements selected, indexes={col_index}, data={data_row}")
       if res:
         #print(f"answer: {res}")
         ans.append(res)
         active_rules.append(idx_rule)
         # check one condition
-        if tie_breaker_strategy == tie_breaker_strategy.FIRST_HIT_RULE:
+        if tie_breaker_strategy == TiebreakerStrategy.FIRST_HIT_RULE:
           return ans, active_rules
-    if tie_breaker_strategy == tie_breaker_strategy.MINORITE_CLASS and len(ans)>0:
+    if tie_breaker_strategy == TiebreakerStrategy.MINORITE_CLASS and len(ans)>0:
       classes, counts = np.unique(ans, return_counts=True)
       min_class = classes[np.argmin(counts)]
       return min_class, active_rules
-    elif tie_breaker_strategy == tie_breaker_strategy.HIGH_COVERAGE and len(ans)>0:
+    elif tie_breaker_strategy == TiebreakerStrategy.HIGH_COVERAGE and len(ans)>0:
       max_coverage = -2
       best_idx = -1
-      for idx, rule in enumerate(active_rules):
-        if rule.coverage is not None:
-          if rule.coverage > max_coverage:
-            max_coverage = rule.coverage
+      for idx, rule_idx in enumerate(active_rules):
+        active_rule = self.rules[rule_idx]
+        if active_rule.coverage is not None:
+          if active_rule.coverage > max_coverage:
+            max_coverage = active_rule.coverage
             best_idx = idx
       if best_idx > -1:
         return ans[best_idx], [active_rules[best_idx ]]
       else:
         return [], []
-    elif tie_breaker_strategy == tie_breaker_strategy.MAJORITY_CLASS and len(ans)>0:
+    elif tie_breaker_strategy == TiebreakerStrategy.MAJORITY_CLASS and len(ans)>0:
       classes, counts = np.unique(ans, return_counts=True)
       max_class = classes[np.argmax(counts)]
       return max_class, active_rules
-    elif tie_breaker_strategy == tie_breaker_strategy.HIGH_PERFORMANCE and len(ans)>0:
+    elif tie_breaker_strategy == TiebreakerStrategy.HIGH_PERFORMANCE and len(ans)>0:
       max_performance = -2
       best_idx = -1
-      for idx, rule in enumerate(active_rules):
-        if rule.proba is not None:
-          if rule.proba > max_performance:
-            max_performance = rule.proba
+      for idx, rule_idx in enumerate(active_rules):
+        active_rule = self.rules[rule_idx]
+        if active_rule.proba is not None:
+          if active_rule.proba > max_performance:
+            max_performance = active_rule.proba
             best_idx = idx
       if best_idx > -1:
         return ans[best_idx], [active_rules[best_idx ]]
@@ -281,7 +277,7 @@ class RuleSet(AbstractRuleSet):
         answers.append(ans)
         rules_idx.append(active_rules)
     else:
-      raise(f"Input cannot be with rank over 2, current rank: {shape}")
+      raise ValueError(f"Input cannot have rank over 2, current rank shape: {shape}")
     if return_decision_path:
       return answers, rules_idx
     else:
@@ -306,16 +302,16 @@ class RuleSet(AbstractRuleSet):
     return self.__str__()
 
   def assess_rule_set(self, 
-             X: np.array, 
-             y_true: np.array, 
+             X: np.ndarray, 
+             y_true: np.ndarray, 
              evaluation_method: Dict[str, Callable] = None, 
              mode: Mode = Mode.CLASSIFICATION) -> Dict[str, float]:
     """Evaluates the rule set given a numpy array. 
 
     :param X: Complete feature array. 
-    :type X: np.array
+    :type X: np.ndarray
     :param y_true: Ground truth values. 
-    :type y_true: np.array
+    :type y_true: np.ndarray
     :param evaluation_method: Dictionary of metrics or function to evaluate, defaults to None
     :type evaluation_method: Dict[str, Callable], optional
     :param mode: describes if the evaluation is made for classification or regression, defaults to Mode.CLASSIFICATION
@@ -340,9 +336,9 @@ class RuleSet(AbstractRuleSet):
           "r2": r2_score
         }
       else:
-        raise(f"Mode {mode} not supported")
+        raise ValueError(f"Mode {mode} not supported")
+    y_pred = self.predict_numpy_rules(X)
     for key in evaluation_method.keys():
-      y_pred = self.predict_numpy_rules(X)
       answer_dict[key] = evaluation_method[key](y_true, y_pred)
       
     return answer_dict
@@ -369,11 +365,18 @@ class RuleSet(AbstractRuleSet):
     with open(filename, mode='wb') as fp:
       dill.dump(self, fp)
       
-  def load(self, filename: str) -> None:
+  def load(self, filename: str) -> "RuleSet":
     """Load a rule set from a file. 
 
     :param filename: Relative or absolute file path to the binary file should end with ".pkl" extension.
     :type filename: str
     """
     with open(filename, mode='rb') as fp:
-      self = dill.load(fp)
+      loaded_ruleset = dill.load(fp)
+    if not isinstance(loaded_ruleset, RuleSet):
+      raise TypeError(f"Loaded object is not a RuleSet: {type(loaded_ruleset)}")
+    self.rules = loaded_ruleset.rules
+    self.tie_breaker_strategy = loaded_ruleset.tie_breaker_strategy
+    self.majority_class = loaded_ruleset.majority_class
+    self.print_stats = loaded_ruleset.print_stats
+    return self

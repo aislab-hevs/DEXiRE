@@ -65,26 +65,52 @@ class Expr(AbstractExpr):
     """Create a lambify expression from symbolic expression.
     """
     self.symbolic_expression = self.__generate_sympy_expr()
-    print(f"Symbolic expression: {self.symbolic_expression}")
     if self.symbolic_expression is not None:
       symbols_in_expr = list(self.symbolic_expression.free_symbols)
       # lambdify expression
       self.lambda_func = lambdify(symbols_in_expr, self.symbolic_expression, 'numpy')
   
-  def numpy_eval(self, X: np.array) -> bool:
+  def numpy_eval(self, X: np.ndarray) -> bool:
     """Eval this expression using a numpy array. 
 
     :param X: Numpy array with values to replace in the expression. 
-    :type X: np.array
+    :type X: np.ndarray
     :return: Boolean value indicating if the expression is evaluate to True or False.
     :rtype: bool
     """
+    # Fast-path: for standard comparison operators we can evaluate directly
+    # with numpy and avoid SymPy/lambdify overhead.
+    operator = self.operator.value if isinstance(self.operator, Operators) else self.operator
+    array_x = np.asarray(X)
+    if isinstance(operator, str):
+      if array_x.ndim == 0:
+        values = array_x
+      elif array_x.ndim == 1:
+        values = array_x
+      elif array_x.ndim == 2:
+        if array_x.shape[1] == 1:
+          values = array_x[:, 0]
+        else:
+          values = array_x[:, self.feature_idx]
+      else:
+        values = array_x.reshape(-1)
+      if operator == Operators.GREATER_THAN:
+        return values > self.threshold
+      if operator == Operators.LESS_THAN:
+        return values < self.threshold
+      if operator == Operators.EQUAL_TO:
+        return values == self.threshold
+      if operator == Operators.NOT_EQUAL:
+        return values != self.threshold
+      if operator == Operators.GREATER_OR_EQ:
+        return values >= self.threshold
+      if operator == Operators.LESS_OR_EQ:
+        return values <= self.threshold
     if self.symbolic_expression is None or self.lambda_func is None:
       self._create_symbolic_expression()
-    if X.ndim == 1:
-      return self.lambda_func(X)
-    else:
-      return self.lambda_func(X.flatten())
+    if array_x.ndim == 1:
+      return self.lambda_func(array_x)
+    return self.lambda_func(array_x.flatten())
   
   def get_symbolic_expression(self) -> symp.Expr:
     """Returns the symbolic expression of this expression.
@@ -120,7 +146,7 @@ class Expr(AbstractExpr):
     elif self.operator == Operators.LESS_OR_EQ:
       return value <= self.threshold
     else:
-      raise Exception("Operator not recognized")
+      raise ValueError(f"Operator not recognized: {self.operator}")
 
   def get_feature_idx(self) -> List[int]:
     """Returns the feature index used in this logical expression.

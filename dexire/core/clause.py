@@ -4,8 +4,26 @@ import sympy as symp
 import numpy as np
 from collections import OrderedDict
 
-from.expression import Expr
+from .expression import Expr
 from .dexire_abstract import AbstractClause
+
+
+def _evaluate_symbolic_lambda(lambda_func: Callable, X: np.ndarray, indices: List[int]) -> np.ndarray:
+  """Evaluate a lambdified symbolic expression on 1D or 2D arrays."""
+  if X.ndim == 2:
+    if len(indices) == 0:
+      # Constant symbolic expression (e.g., empty conjunction/disjunction)
+      return np.full(X.shape[0], bool(lambda_func()))
+    x_selected = X[:, indices]
+    columns = [x_selected[:, i] for i in range(x_selected.shape[1])]
+    return np.asarray(lambda_func(*columns), dtype=bool)
+  if X.ndim == 1:
+    if len(indices) == 0:
+      return bool(lambda_func())
+    return bool(lambda_func(*X[indices]))
+  raise ValueError(
+    f"The input shape {X.shape} is invalid. Expected a 1D or 2D array."
+  )
 
 class ConjunctiveClause(AbstractClause):
   """Create a new conjunctive clause (clause join with AND)
@@ -13,13 +31,13 @@ class ConjunctiveClause(AbstractClause):
   :param AbstractClause: Abstract class for clause.
   :type AbstractClause:  AbstractClause
   """
-  def __init__(self, clauses: List[Union[Expr, AbstractClause]] = []) -> None:
+  def __init__(self, clauses: Union[None, List[Union[Expr, AbstractClause]]] = None) -> None:
     """Constructor for conjunctive clause. Receives the list of clauses or expressions to join in a disyuntive clause.
 
     :param clauses: List of clauses or expressions to join, defaults to [].
     :type clauses: List[Union[Expr, AbstractClause]], optional
     """
-    self.clauses = clauses
+    self.clauses = clauses if clauses is not None else []
     self.feature_name_to_idx = {}
     self.update_feature_name_to_idx()
     self.symbolic_clause = None
@@ -85,28 +103,17 @@ class ConjunctiveClause(AbstractClause):
       self._create_symbolic_clause()
     return self.symbolic_clause
   
-  def numpy_eval(self, X: np.array) -> bool:
+  def numpy_eval(self, X: np.ndarray) -> bool:
     """Eval the clause expression as a numpy expression.
 
     :param X: Numpy array with the input data.
-    :type X: np.array
+    :type X: np.ndarray
     :return: Boolean value indicating if the clause is True or False given X. 
     :rtype: bool
     """
-    if self.symbolic_clause is None or self.lambda_func is None or len(self.indices)==0:
+    if self.symbolic_clause is None or self.lambda_func is None:
       self._create_symbolic_clause()
-    # filter the matrix 
-    if len(self.indices) == 0 or self.lambda_func is None:
-      self._create_symbolic_clause()
-    if X.ndim == 2:
-      x = X[:, self.indices]
-      result = np.apply_along_axis(lambda na: self.lambda_func(*na), 1, x)
-      return result
-    elif X.ndim == 1:
-      x = X[self.indices]
-      return self.lambda_func(*x)
-    else: 
-      raise ValueError(f"The input column shape {X.shape[1]} do not coincide with the expected: {len(self.indices)}")(f"The input shape {X.shape} do not coincide with the expected: {len(self.indices)}")
+    return _evaluate_symbolic_lambda(self.lambda_func, X, self.indices)
     
 
   def eval(self, value: List[Any]) -> bool:
@@ -220,13 +227,13 @@ class DisjunctiveClause(AbstractClause):
   :param AbstractClause: Abstract class for clause.
   :type AbstractClause: AbstractClause
   """
-  def __init__(self, clauses: List[Union[Expr, AbstractClause]] = []) -> None:
+  def __init__(self, clauses: Union[None, List[Union[Expr, AbstractClause]]] = None) -> None:
     """Constructor for disjunctive clause. Receives the list of clauses or expressions to join
 
     :param clauses: List of clauses or expressions to join with OR, defaults to []
     :type clauses: List[Union[Expr, AbstractClause]], optional
     """
-    self.clauses = clauses
+    self.clauses = clauses if clauses is not None else []
     self.feature_name_to_idx = {}
     self.update_feature_name_to_idx()
     self.symbolic_clause = None
@@ -326,26 +333,18 @@ class DisjunctiveClause(AbstractClause):
     self.update_feature_name_to_idx()
     self._create_symbolic_clause()
 
-  def numpy_eval(self, X: np.array) -> bool:
+  def numpy_eval(self, X: np.ndarray) -> bool:
     """Eval the expression using the array X.
 
     :param X: Input data for the clause.
-    :type X: np.array
+    :type X: np.ndarray
     :raises ValueError: The number of features in X does not match the expect input data.
     :return: Boolean expression indicating if the clause is True or False given X.
     :rtype: bool
     """
-    if self.symbolic_clause is None or self.lambda_func is None or len(self.indices) == 0:
+    if self.symbolic_clause is None or self.lambda_func is None:
       self._create_symbolic_clause()
-    if X.ndim == 2:
-      x = X[:, self.indices]
-      result = np.apply_along_axis(lambda na: self.lambda_func(*na), 1, x)
-      return result
-    elif X.ndim == 1:
-      x = X[self.indices]
-      return self.lambda_func(*x)
-    else: 
-      raise ValueError(f"The input column shape {X.shape[1]} do not coincide with the expected: {len(self.indices)}")(f"The input shape {X.shape} do not coincide with the expected: {len(self.indices)}")
+    return _evaluate_symbolic_lambda(self.lambda_func, X, self.indices)
     
 
   def eval(self, value: List[Any]) -> bool:
